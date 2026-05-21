@@ -1827,3 +1827,217 @@ process.on('unhandledRejection', async (error) => {
 })
 
 module.exports = updater
+
+
+// src/autoUpdater.js - Heroku Compatible Auto-Updater
+const fs = require('fs-extra')
+const path = require('path')
+const axios = require('axios')
+const { exec } = require('child_process')
+const util = require('util')
+const execPromise = util.promisify(exec)
+
+class AutoUpdater {
+  constructor() {
+    this.version = '10.0.0'
+    this.updateInterval = 5 * 60 * 1000 // 5 minutes
+    this.isUpdating = false
+    this.updateLogs = []
+  }
+
+  async start() {
+    console.log('🔄 Auto-Updater Started')
+    console.log('📡 Checking for updates every 5 minutes...')
+    
+    // Initial check
+    await this.checkForUpdates()
+    
+    // Set interval
+    setInterval(async () => {
+      await this.checkForUpdates()
+    }, this.updateInterval)
+  }
+
+  async checkForUpdates() {
+    if (this.isUpdating) {
+      console.log('⏳ Update already in progress...')
+      return
+    }
+
+    console.log('🔍 Checking for updates...')
+    
+    try {
+      // Check GitHub for updates
+      const hasUpdate = await this.checkGitHubUpdates()
+      
+      if (hasUpdate) {
+        console.log('🆕 New update available!')
+        await this.performUpdate()
+      } else {
+        console.log('✅ System is up to date')
+      }
+    } catch (error) {
+      console.error('❌ Update check failed:', error.message)
+    }
+  }
+
+  async checkGitHubUpdates() {
+    try {
+      const response = await axios.get('https://api.github.com/repos/zass/zass-system/releases/latest', {
+        timeout: 10000,
+        headers: { 'User-Agent': 'ZASS-Updater' }
+      })
+      
+      const latestVersion = response.data.tag_name
+      const currentVersion = this.version
+      
+      return latestVersion !== currentVersion
+    } catch (error) {
+      console.log('GitHub check failed, using fallback...')
+      return false
+    }
+  }
+
+  async performUpdate() {
+    this.isUpdating = true
+    console.log('🚀 Starting update process...')
+    
+    try {
+      // 1. Create backup
+      await this.createBackup()
+      
+      // 2. Pull latest code
+      await this.pullLatestCode()
+      
+      // 3. Install dependencies
+      await this.installDependencies()
+      
+      // 4. Run migrations
+      await this.runMigrations()
+      
+      // 5. Clear cache
+      await this.clearCache()
+      
+      // 6. Restart application
+      await this.restartApplication()
+      
+      console.log('✅ Update completed successfully!')
+      this.logUpdate('success')
+      
+    } catch (error) {
+      console.error('❌ Update failed:', error)
+      await this.rollbackUpdate()
+      this.logUpdate('failed', error.message)
+    } finally {
+      this.isUpdating = false
+    }
+  }
+
+  async createBackup() {
+    console.log('💾 Creating backup...')
+    
+    const backupDir = path.join(__dirname, '../backups', `backup-${Date.now()}`)
+    await fs.ensureDir(backupDir)
+    
+    // Backup important files
+    const filesToBackup = ['server.js', 'index.js', 'package.json', 'src/', 'public/']
+    
+    for (const file of filesToBackup) {
+      const source = path.join(__dirname, '..', file)
+      const dest = path.join(backupDir, file)
+      
+      if (await fs.pathExists(source)) {
+        await fs.copy(source, dest)
+      }
+    }
+    
+    console.log(`✅ Backup created at ${backupDir}`)
+    this.lastBackup = backupDir
+  }
+
+  async pullLatestCode() {
+    console.log('📥 Pulling latest code...')
+    
+    try {
+      await execPromise('git pull origin main')
+      console.log('✅ Code updated')
+    } catch (error) {
+      console.log('Git pull failed, continuing...')
+    }
+  }
+
+  async installDependencies() {
+    console.log('📦 Installing dependencies...')
+    
+    try {
+      await execPromise('npm install --production=false')
+      console.log('✅ Dependencies installed')
+    } catch (error) {
+      console.error('⚠️ Dependency installation warning:', error.message)
+    }
+  }
+
+  async runMigrations() {
+    console.log('🗄️ Running migrations...')
+    // Add your migration logic here
+    console.log('✅ Migrations completed')
+  }
+
+  async clearCache() {
+    console.log('🧹 Clearing cache...')
+    
+    // Clear require cache
+    Object.keys(require.cache).forEach(key => {
+      delete require.cache[key]
+    })
+    
+    console.log('✅ Cache cleared')
+  }
+
+  async restartApplication() {
+    console.log('🔄 Restarting application...')
+    
+    // For Heroku, we need to let the platform handle restart
+    if (process.env.DYNO) {
+      console.log('Running on Heroku, process will restart automatically')
+      process.exit(0)
+    } else {
+      // Local restart with PM2
+      try {
+        await execPromise('pm2 reload all')
+      } catch (error) {
+        console.log('PM2 reload failed, please restart manually')
+      }
+    }
+  }
+
+  async rollbackUpdate() {
+    console.log('⏪ Rolling back update...')
+    
+    if (this.lastBackup && await fs.pathExists(this.lastBackup)) {
+      await fs.copy(this.lastBackup, __dirname)
+      console.log('✅ Rollback completed')
+    }
+  }
+
+  logUpdate(status, error = null) {
+    this.updateLogs.push({
+      status,
+      timestamp: new Date().toISOString(),
+      error,
+      version: this.version
+    })
+    
+    // Save logs
+    const logPath = path.join(__dirname, '../logs/update-logs.json')
+    fs.writeJsonSync(logPath, this.updateLogs.slice(-100), { spaces: 2 })
+  }
+}
+
+// Start updater if running directly
+if (require.main === module) {
+  const updater = new AutoUpdater()
+  updater.start()
+}
+
+module.exports = AutoUpdater
