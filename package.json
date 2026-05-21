@@ -8,12 +8,10 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "heroku-postbuild": "echo 'Building for Heroku...' || exit 0",
+    "heroku-postbuild": "echo 'Building for Heroku...'",
     "dev": "nodemon server.js",
-    "build": "echo 'Build skipped for Heroku'",
     "test": "jest --coverage",
-    "lint": "eslint .",
-    "format": "prettier --write ."
+    "lint": "eslint ."
   },
   "dependencies": {
     "express": "^4.18.2",
@@ -46,8 +44,5 @@
   "engines": {
     "node": "18.20.x",
     "npm": "9.8.x"
-  },
-  "os": ["linux"],
-  "cpu": ["x64"],
-  "private": true
+  }
 }
