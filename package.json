@@ -34,3 +34,10 @@
     "nodemon": "^3.1.1"
   }
 }
+
+{
+  "scripts": {
+    "start": "node server.js",
+    "heroku-postbuild": "npm install --production=false && npm run build --if-present"
+  }
+}
