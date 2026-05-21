@@ -4,16 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ZASS Browser - ZASS Only | Unlimited Web Browser</title>
-    <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌐</text></svg>">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
         body {
             font-family: 'Inter', sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -21,21 +16,20 @@
             display: flex;
             flex-direction: column;
         }
-
-        /* ZASS Browser Header */
+        
         .browser-header {
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
             padding: 12px 20px;
             border-bottom: 2px solid #e94560;
         }
-
+        
         .toolbar {
             display: flex;
             align-items: center;
             gap: 12px;
             flex-wrap: wrap;
         }
-
+        
         .zass-logo {
             display: flex;
             align-items: center;
@@ -46,11 +40,9 @@
             color: white;
             font-weight: bold;
         }
-
-        .zass-logo i {
-            font-size: 18px;
-        }
-
+        
+        .zass-logo i { font-size: 18px; }
+        
         .nav-btn {
             background: rgba(255,255,255,0.1);
             border: none;
@@ -61,12 +53,9 @@
             color: white;
             transition: all 0.3s;
         }
-
-        .nav-btn:hover {
-            background: #e94560;
-            transform: scale(1.05);
-        }
-
+        
+        .nav-btn:hover { background: #e94560; transform: scale(1.05); }
+        
         .url-bar {
             flex: 1;
             display: flex;
@@ -76,12 +65,9 @@
             padding: 8px 16px;
             border: 1px solid rgba(255,255,255,0.2);
         }
-
-        .url-bar i {
-            color: #aaa;
-            margin-right: 10px;
-        }
-
+        
+        .url-bar i { color: #aaa; margin-right: 10px; }
+        
         #urlInput {
             flex: 1;
             background: transparent;
@@ -91,11 +77,9 @@
             font-size: 14px;
             outline: none;
         }
-
-        #urlInput::placeholder {
-            color: rgba(255,255,255,0.6);
-        }
-
+        
+        #urlInput::placeholder { color: rgba(255,255,255,0.6); }
+        
         .go-btn {
             background: #e94560;
             border: none;
@@ -106,12 +90,9 @@
             color: white;
             transition: all 0.3s;
         }
-
-        .go-btn:hover {
-            transform: scale(1.05);
-            background: #ff6b81;
-        }
-
+        
+        .go-btn:hover { transform: scale(1.05); background: #ff6b81; }
+        
         .action-btn {
             background: rgba(255,255,255,0.1);
             border: none;
@@ -122,23 +103,13 @@
             color: white;
             transition: all 0.3s;
         }
-
-        .action-btn:hover {
-            background: #e94560;
-        }
-
-        .viewport {
-            flex: 1;
-            background: white;
-            position: relative;
-        }
-
-        #browserFrame {
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
-
+        
+        .action-btn:hover { background: #e94560; }
+        
+        .viewport { flex: 1; background: white; position: relative; }
+        
+        #browserFrame { width: 100%; height: 100%; border: none; }
+        
         .loading {
             position: fixed;
             top: 50%;
@@ -152,13 +123,9 @@
             z-index: 1000;
             text-align: center;
         }
-
-        .loading i {
-            font-size: 30px;
-            margin-bottom: 10px;
-        }
-
-        /* ZASS Status Bar */
+        
+        .loading i { font-size: 30px; margin-bottom: 10px; }
+        
         .zass-status {
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
             padding: 6px 20px;
@@ -168,12 +135,9 @@
             color: #aaa;
             border-top: 1px solid #e94560;
         }
-
-        .zass-status span i {
-            margin-right: 5px;
-        }
-
-        /* Sidebar */
+        
+        .zass-status span i { margin-right: 5px; }
+        
         .sidebar {
             position: fixed;
             right: -320px;
@@ -186,11 +150,9 @@
             padding: 20px;
             overflow-y: auto;
         }
-
-        .sidebar.open {
-            right: 0;
-        }
-
+        
+        .sidebar.open { right: 0; }
+        
         .sidebar-header {
             display: flex;
             justify-content: space-between;
@@ -200,7 +162,7 @@
             padding-bottom: 10px;
             border-bottom: 1px solid #e94560;
         }
-
+        
         .close-sidebar {
             background: none;
             border: none;
@@ -208,7 +170,7 @@
             font-size: 24px;
             cursor: pointer;
         }
-
+        
         .bookmark-item {
             background: rgba(255,255,255,0.1);
             padding: 12px;
@@ -218,25 +180,13 @@
             color: white;
             transition: all 0.3s;
         }
-
-        .bookmark-item:hover {
-            background: #e94560;
-            transform: translateX(-5px);
-        }
-
-        /* Responsive */
+        
+        .bookmark-item:hover { background: #e94560; transform: translateX(-5px); }
+        
         @media (max-width: 768px) {
-            .toolbar {
-                gap: 6px;
-            }
-            .nav-btn, .action-btn {
-                width: 34px;
-                height: 34px;
-                font-size: 12px;
-            }
-            .zass-logo span {
-                display: none;
-            }
+            .toolbar { gap: 6px; }
+            .nav-btn, .action-btn { width: 34px; height: 34px; font-size: 12px; }
+            .zass-logo span { display: none; }
         }
     </style>
 </head>
@@ -297,24 +247,15 @@
         let historyIndex = 0;
         let bookmarks = JSON.parse(localStorage.getItem('zassBookmarks') || '[]');
         
-        function showLoading() {
-            loading.style.display = 'block';
-        }
-        
-        function hideLoading() {
-            loading.style.display = 'none';
-        }
+        function showLoading() { loading.style.display = 'block'; }
+        function hideLoading() { loading.style.display = 'none'; }
         
         async function navigateTo(url) {
             showLoading();
             
             let targetUrl = url.trim();
-            if (!targetUrl) {
-                hideLoading();
-                return;
-            }
+            if (!targetUrl) { hideLoading(); return; }
             
-            // Check if it's a search query (not a URL)
             const urlPattern = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
             if (!urlPattern.test(targetUrl) && !targetUrl.startsWith('http')) {
                 targetUrl = `https://www.google.com/search?q=${encodeURIComponent(targetUrl)}`;
@@ -327,7 +268,6 @@
                 const data = await response.json();
                 
                 if (data.success && data.content) {
-                    // Write the content to iframe
                     const doc = browserFrame.contentDocument || browserFrame.contentWindow.document;
                     doc.open();
                     doc.write(data.content);
@@ -337,12 +277,10 @@
                     currentUrl = data.url;
                     document.title = 'ZASS Browser - ZASS Only';
                     
-                    // Update history
                     history = history.slice(0, historyIndex + 1);
                     history.push(data.url);
                     historyIndex++;
                     
-                    // Update secure icon
                     const secureIcon = document.getElementById('secureIcon');
                     if (data.url.startsWith('https')) {
                         secureIcon.className = 'fas fa-lock';
@@ -352,12 +290,10 @@
                         secureIcon.style.color = '#ff4757';
                     }
                 } else {
-                    // Fallback - load directly
                     browserFrame.src = targetUrl;
                     urlInput.value = targetUrl;
                 }
             } catch (error) {
-                console.error('Navigation error:', error);
                 browserFrame.src = targetUrl;
                 urlInput.value = targetUrl;
             }
@@ -370,9 +306,7 @@
                 historyIndex--;
                 navigateTo(history[historyIndex]);
             } else {
-                try {
-                    browserFrame.contentWindow.history.back();
-                } catch(e) {}
+                try { browserFrame.contentWindow.history.back(); } catch(e) {}
             }
         }
         
@@ -381,19 +315,12 @@
                 historyIndex++;
                 navigateTo(history[historyIndex]);
             } else {
-                try {
-                    browserFrame.contentWindow.history.forward();
-                } catch(e) {}
+                try { browserFrame.contentWindow.history.forward(); } catch(e) {}
             }
         }
         
-        function reload() {
-            navigateTo(currentUrl);
-        }
-        
-        function goHome() {
-            navigateTo('https://www.google.com');
-        }
+        function reload() { navigateTo(currentUrl); }
+        function goHome() { navigateTo('https://www.google.com'); }
         
         function addBookmark() {
             const bookmark = {
@@ -406,12 +333,10 @@
             if (!bookmarks.find(b => b.url === bookmark.url)) {
                 bookmarks.unshift(bookmark);
                 localStorage.setItem('zassBookmarks', JSON.stringify(bookmarks));
-                showZassToast('✅ Bookmark added to ZASS!');
-                if (document.getElementById('sidebar').classList.contains('open')) {
-                    showBookmarks();
-                }
+                alert('✅ Bookmark added to ZASS!');
+                if (document.getElementById('sidebar').classList.contains('open')) showBookmarks();
             } else {
-                showZassToast('⚠️ Already in ZASS bookmarks');
+                alert('⚠️ Already in ZASS bookmarks');
             }
         }
         
@@ -446,58 +371,23 @@
         function removeBookmark(id) {
             bookmarks = bookmarks.filter(b => b.id !== id);
             localStorage.setItem('zassBookmarks', JSON.stringify(bookmarks));
-            showZassToast('🗑️ Bookmark removed from ZASS');
             showBookmarks();
         }
         
-        function closeSidebar() {
-            document.getElementById('sidebar').classList.remove('open');
-        }
-        
-        function showZassToast(message) {
-            const toast = document.createElement('div');
-            toast.innerHTML = `<i class="fas fa-zass"></i> ${message}`;
-            toast.style.position = 'fixed';
-            toast.style.bottom = '80px';
-            toast.style.left = '50%';
-            toast.style.transform = 'translateX(-50%)';
-            toast.style.backgroundColor = '#1a1a2e';
-            toast.style.color = 'white';
-            toast.style.padding = '12px 24px';
-            toast.style.borderRadius = '30px';
-            toast.style.zIndex = '9999';
-            toast.style.fontSize = '14px';
-            toast.style.border = '1px solid #e94560';
-            toast.style.fontWeight = '500';
-            document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 2500);
-        }
+        function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); }
         
         function toggleFullscreen() {
             if (!document.fullscreenElement) {
                 document.documentElement.requestFullscreen();
                 document.getElementById('fullscreenBtn').innerHTML = '<i class="fas fa-compress"></i>';
-                showZassToast('🎬 ZASS Fullscreen Mode Activated');
             } else {
                 document.exitFullscreen();
                 document.getElementById('fullscreenBtn').innerHTML = '<i class="fas fa-expand"></i>';
-                showZassToast('📱 Exited Fullscreen Mode');
             }
         }
         
-        // Event Listeners
-        document.getElementById('goBtn').addEventListener('click', () => {
-            const url = urlInput.value.trim();
-            if (url) navigateTo(url);
-        });
-        
-        urlInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                const url = urlInput.value.trim();
-                if (url) navigateTo(url);
-            }
-        });
-        
+        document.getElementById('goBtn').addEventListener('click', () => { const url = urlInput.value.trim(); if (url) navigateTo(url); });
+        urlInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') { const url = urlInput.value.trim(); if (url) navigateTo(url); } });
         document.getElementById('backBtn').addEventListener('click', goBack);
         document.getElementById('forwardBtn').addEventListener('click', goForward);
         document.getElementById('reloadBtn').addEventListener('click', reload);
@@ -506,24 +396,9 @@
         document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
         document.getElementById('closeSidebarBtn').addEventListener('click', closeSidebar);
         
-        browserFrame.addEventListener('load', () => {
-            hideLoading();
-            // Try to set title
-            try {
-                const frameTitle = browserFrame.contentDocument?.title;
-                if (frameTitle) {
-                    document.title = `ZASS Browser - ${frameTitle.substring(0, 30)}`;
-                }
-            } catch(e) {}
-        });
+        browserFrame.addEventListener('load', () => { hideLoading(); });
         
-        // Start with Google but show ZASS branding
         navigateTo('https://www.google.com');
-        
-        // Display ZASS welcome message
-        setTimeout(() => {
-            showZassToast('🔥 Welcome to ZASS Browser - ZASS Only! Unlimited & Uncensored 🔥');
-        }, 1000);
     </script>
 </body>
 </html>
