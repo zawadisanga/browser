@@ -119,3 +119,113 @@ async function start() {
 start()
 
 module.exports = app
+
+
+// index.js - Main Entry Point for Heroku
+const express = require('express')
+const path = require('path')
+const cors = require('cors')
+const helmet = require('helmet')
+const compression = require('compression')
+const rateLimit = require('express-rate-limit')
+
+// Load environment variables
+require('dotenv').config()
+
+const app = express()
+const PORT = process.env.PORT || 16232
+
+// Middleware
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false
+}))
+app.use(cors())
+app.use(compression())
+app.use(express.json({ limit: '50mb' }))
+app.use(express.urlencoded({ extended: true, limit: '50mb' }))
+app.use(express.static('public'))
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 1000,
+  message: { error: 'Too many requests', code: 'RATE_LIMIT_EXCEEDED' }
+})
+app.use('/api/', limiter)
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    version: '10.0.0',
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development',
+    timestamp: new Date().toISOString()
+  })
+})
+
+// API Routes
+app.get('/api/status', (req, res) => {
+  res.json({
+    status: 'running',
+    autoUpdate: true,
+    selfHeal: true,
+    version: '10.0.0',
+    uptime: process.uptime()
+  })
+})
+
+// Browser endpoint
+app.get('/browser', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'browser.html'))
+})
+
+// Social endpoint
+app.get('/social', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'social.html'))
+})
+
+// Media endpoint
+app.get('/media', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'media.html'))
+})
+
+// Chat endpoint
+app.get('/chat', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'chat.html'))
+})
+
+// Dashboard endpoint
+app.get('/dashboard', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'dashboard.html'))
+})
+
+// Main page
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'))
+})
+
+// Start server
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`
+╔═══════════════════════════════════════════════════════════════════╗
+║                                                                   ║
+║     🔄 ZASS SELF-UPDATING SYSTEM - RUNNING 🔄                    ║
+║                                                                   ║
+║     🚀 Server: http://localhost:${PORT}                           ║
+║     💚 Health: http://localhost:${PORT}/health                   ║
+║     🌐 Browser: http://localhost:${PORT}/browser                 ║
+║     💬 Chat: http://localhost:${PORT}/chat                       ║
+║     📱 Social: http://localhost:${PORT}/social                   ║
+║     🎬 Media: http://localhost:${PORT}/media                     ║
+║                                                                   ║
+║     🔄 Auto-Update: ACTIVE                                       ║
+║     🏥 Self-Heal: ACTIVE                                         ║
+║     📊 Monitoring: ACTIVE                                        ║
+║                                                                   ║
+╚═══════════════════════════════════════════════════════════════════╝
+  `)
+})
+
+module.exports = app
