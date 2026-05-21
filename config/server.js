@@ -831,3 +831,10 @@ server.listen(PORT, '0.0.0.0', () => {
 });
 
 module.exports = app;
+
+
+// Mwishoni mwa server.js, hakikisha unatumia PORT kutoka Heroku
+const PORT = process.env.PORT || 16232;
+server.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running on port ${PORT}`);
+});
