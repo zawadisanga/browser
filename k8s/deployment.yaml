@@ -1,0 +1,242 @@
+# k8s/deployment.yaml - Kubernetes Enterprise Deployment
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: zass-production
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: zass-config
+  namespace: zass-production
+data:
+  NODE_ENV: "production"
+  PORT: "16232"
+  REDIS_HOST: "redis-service"
+  MONGODB_HOST: "mongodb-service"
+  PG_HOST: "postgres-service"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: zass-secrets
+  namespace: zass-production
+type: Opaque
+stringData:
+  JWT_SECRET: "super-secret-jwt-key-please-change"
+  SESSION_SECRET: "super-secret-session-key"
+  REDIS_PASSWORD: "redis-password"
+  MONGODB_PASSWORD: "mongodb-password"
+  PGPASSWORD: "postgres-password"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zass-api
+  namespace: zass-production
+  labels:
+    app: zass
+    tier: api
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: zass
+      tier: api
+  template:
+    metadata:
+      labels:
+        app: zass
+        tier: api
+    spec:
+      containers:
+      - name: api
+        image: zass/enterprise-api:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 16232
+          name: http
+        envFrom:
+        - configMapRef:
+            name: zass-config
+        - secretRef:
+            name: zass-secrets
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "2000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 16232
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 16232
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        volumeMounts:
+        - name: logs
+          mountPath: /app/logs
+        - name: uploads
+          mountPath: /app/uploads
+      volumes:
+      - name: logs
+        persistentVolumeClaim:
+          claimName: zass-logs-pvc
+      - name: uploads
+        persistentVolumeClaim:
+          claimName: zass-uploads-pvc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zass-worker
+  namespace: zass-production
+  labels:
+    app: zass
+    tier: worker
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: zass
+      tier: worker
+  template:
+    metadata:
+      labels:
+        app: zass
+        tier: worker
+    spec:
+      containers:
+      - name: worker
+        image: zass/enterprise-worker:latest
+        imagePullPolicy: Always
+        envFrom:
+        - configMapRef:
+            name: zass-config
+        - secretRef:
+            name: zass-secrets
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "1000m"
+          limits:
+            memory: "4Gi"
+            cpu: "4000m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zass-api-service
+  namespace: zass-production
+spec:
+  selector:
+    app: zass
+    tier: api
+  ports:
+  - port: 16232
+    targetPort: 16232
+    name: http
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zass-api-lb
+  namespace: zass-production
+spec:
+  selector:
+    app: zass
+    tier: api
+  ports:
+  - port: 80
+    targetPort: 16232
+    name: http
+  - port: 443
+    targetPort: 16232
+    name: https
+  type: LoadBalancer
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: zass-api-hpa
+  namespace: zass-production
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: zass-api
+  minReplicas: 3
+  maxReplicas: 20
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: zass-ingress
+  namespace: zass-production
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-burst: "200"
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+spec:
+  tls:
+  - hosts:
+    - zass.website
+    - api.zass.website
+    secretName: zass-tls
+  rules:
+  - host: zass.website
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: zass-api-service
+            port:
+              number: 16232
+  - host: api.zass.website
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: zass-api-service
+            port:
+              number: 16232
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: zass-api-pdb
+  namespace: zass-production
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: zass
+      tier: api
