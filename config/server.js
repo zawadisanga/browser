@@ -1,70 +1,21 @@
-// server.js - ZASS Browser Ultimate Light Edition
+// server.js - ZASS Browser (Heroku Compatible - No Puppeteer!)
 const express = require('express');
 const axios = require('axios');
 const cheerio = require('cheerio');
-const puppeteer = require('puppeteer-core');
 const path = require('path');
-const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 16232;
 
-// ============ MIDDLEWARE ============
+// Middleware
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
-// ============ SIMPLE CACHE (NO EXTRA STORAGE) ============
+// Cache system
 const cache = new Map();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-// ============ BROWSER INSTANCE (REUSED) ============
-let browser = null;
-
-async function getBrowser() {
-    if (browser && browser.isConnected()) return browser;
-    
-    // Find Chrome path automatically
-    const paths = [
-        '/usr/bin/google-chrome',
-        '/usr/bin/chromium-browser',
-        '/usr/bin/chromium',
-        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-        'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-        '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-        process.env.CHROME_PATH
-    ];
-    
-    let chromePath = null;
-    for (const p of paths) {
-        if (p && fs.existsSync(p)) {
-            chromePath = p;
-            break;
-        }
-    }
-    
-    if (!chromePath) {
-        console.log('⚠️ Chrome not found, using fallback mode');
-        return null;
-    }
-    
-    browser = await puppeteer.launch({
-        executablePath: chromePath,
-        headless: 'new',
-        args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-gpu'
-        ]
-    });
-    
-    return browser;
-}
-
-// ============ CORE FUNCTIONS ============
-
-// Smart Search - Works on any engine
+// ============ SEARCH FUNCTION ============
 async function searchWeb(query, engine = 'google') {
     const cacheKey = `search:${engine}:${query}`;
     
@@ -89,7 +40,11 @@ async function searchWeb(query, engine = 'google') {
                         const link = $(el).find('a').attr('href');
                         const snippet = $(el).find('.VwiC3b').text() || $(el).find('.IsZvec').text();
                         if (title && link && link.startsWith('http')) {
-                            results.push({ title, url: link, snippet: snippet.substring(0, 200) });
+                            results.push({ 
+                                title: title || 'Untitled', 
+                                url: link, 
+                                snippet: snippet?.substring(0, 200) || '' 
+                            });
                         }
                     });
                     return results;
@@ -105,23 +60,11 @@ async function searchWeb(query, engine = 'google') {
                         const link = $(el).find('a').attr('href');
                         const snippet = $(el).find('.b_caption p').text();
                         if (title && link) {
-                            results.push({ title, url: link, snippet: snippet?.substring(0, 200) || '' });
-                        }
-                    });
-                    return results;
-                };
-                break;
-                
-            case 'youtube':
-                searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
-                parser = ($) => {
-                    const results = [];
-                    $('ytd-video-renderer').each((i, el) => {
-                        const title = $(el).find('#video-title').text();
-                        const link = 'https://youtube.com' + $(el).find('#video-title').attr('href');
-                        const duration = $(el).find('#text').text();
-                        if (title && link) {
-                            results.push({ title, url: link, duration, type: 'video' });
+                            results.push({ 
+                                title: title, 
+                                url: link, 
+                                snippet: snippet?.substring(0, 200) || '' 
+                            });
                         }
                     });
                     return results;
@@ -136,7 +79,7 @@ async function searchWeb(query, engine = 'google') {
                         const title = $(el).find('h3').text();
                         const link = $(el).find('a').attr('href');
                         if (title && link && link.startsWith('http')) {
-                            results.push({ title, url: link });
+                            results.push({ title: title, url: link });
                         }
                     });
                     return results;
@@ -155,9 +98,9 @@ async function searchWeb(query, engine = 'google') {
         
         const data = {
             success: true,
-            query,
-            engine,
-            results: results.slice(0, 30),
+            query: query,
+            engine: engine,
+            results: results.slice(0, 25),
             total: results.length
         };
         
@@ -165,11 +108,15 @@ async function searchWeb(query, engine = 'google') {
         return data;
         
     } catch (error) {
-        return { success: false, error: error.message, query };
+        return { 
+            success: false, 
+            error: error.message, 
+            query: query 
+        };
     }
 }
 
-// Browse any URL (Proxy Mode)
+// ============ BROWSE FUNCTION (PROXY) ============
 async function proxyBrowse(url) {
     const cacheKey = `browse:${url}`;
     
@@ -185,136 +132,44 @@ async function proxyBrowse(url) {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
             },
-            timeout: 20000
+            timeout: 20000,
+            maxRedirects: 5
         });
         
         const $ = cheerio.load(response.data);
         const title = $('title').text();
         
-        // Extract all links
         const links = [];
         $('a').each((i, el) => {
             const href = $(el).attr('href');
             const text = $(el).text().trim().substring(0, 100);
             if (href && href.startsWith('http') && text) {
-                links.push({ url: href, text });
+                links.push({ url: href, text: text });
             }
-            if (links.length >= 100) return false;
-        });
-        
-        // Extract images
-        const images = [];
-        $('img').each((i, el) => {
-            const src = $(el).attr('src');
-            if (src && src.startsWith('http')) {
-                images.push({ url: src, alt: $(el).attr('alt') || '' });
-            }
-            if (images.length >= 50) return false;
+            if (links.length >= 50) return false;
         });
         
         const data = {
             success: true,
-            url,
+            url: url,
             title: title || url,
-            links,
-            images,
-            html: response.data
+            links: links,
+            contentLength: response.data.length
         };
         
         cache.set(cacheKey, { data, timestamp: Date.now() });
         return data;
         
     } catch (error) {
-        return { success: false, error: error.message, url };
-    }
-}
-
-// Full Browser Mode (JavaScript heavy sites)
-async function fullBrowse(url) {
-    const browserInstance = await getBrowser();
-    if (!browserInstance) {
-        return proxyBrowse(url);
-    }
-    
-    try {
-        const page = await browserInstance.newPage();
-        await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
-        
-        const html = await page.content();
-        const title = await page.title();
-        const currentUrl = page.url();
-        
-        const links = await page.evaluate(() => {
-            return Array.from(document.querySelectorAll('a')).slice(0, 100).map(a => ({
-                url: a.href,
-                text: a.innerText?.substring(0, 100)
-            })).filter(l => l.url && l.url.startsWith('http'));
-        });
-        
-        const images = await page.evaluate(() => {
-            return Array.from(document.querySelectorAll('img')).slice(0, 50).map(img => ({
-                url: img.src,
-                alt: img.alt
-            })).filter(i => i.url && i.url.startsWith('http'));
-        });
-        
-        await page.close();
-        
-        return {
-            success: true,
-            url: currentUrl,
-            title,
-            links,
-            images,
-            html
+        return { 
+            success: false, 
+            error: error.message, 
+            url: url 
         };
-        
-    } catch (error) {
-        return { success: false, error: error.message, url };
     }
 }
 
-// Download any file
-async function downloadFile(url, filename) {
-    try {
-        const response = await axios({
-            method: 'GET',
-            url: url,
-            responseType: 'stream',
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            }
-        });
-        
-        return { success: true, stream: response.data, filename: filename || url.split('/').pop() || 'download' };
-    } catch (error) {
-        return { success: false, error: error.message };
-    }
-}
-
-// Get video info (YouTube, TikTok, etc)
-async function getVideoInfo(url) {
-    try {
-        const response = await axios.get(url, { timeout: 10000 });
-        const $ = cheerio.load(response.data);
-        
-        const title = $('title').text();
-        const description = $('meta[name="description"]').attr('content') || '';
-        const thumbnail = $('meta[property="og:image"]').attr('content') || '';
-        
-        return {
-            success: true,
-            title,
-            description,
-            thumbnail,
-            url
-        };
-    } catch (error) {
-        return { success: false, error: error.message };
-    }
-}
-
-// ============ API ROUTES ============
+// ============ API ENDPOINTS ============
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -342,7 +197,7 @@ app.get('/api/search', async (req, res) => {
 
 // Browse endpoint
 app.get('/api/browse', async (req, res) => {
-    let { url, mode = 'proxy' } = req.query;
+    let { url } = req.query;
     
     if (!url) {
         return res.status(400).json({ error: 'URL required' });
@@ -352,41 +207,11 @@ app.get('/api/browse', async (req, res) => {
         url = 'https://' + url;
     }
     
-    const result = mode === 'full' ? await fullBrowse(url) : await proxyBrowse(url);
+    const result = await proxyBrowse(url);
     res.json(result);
 });
 
-// Download endpoint
-app.get('/api/download', async (req, res) => {
-    const { url, filename } = req.query;
-    
-    if (!url) {
-        return res.status(400).json({ error: 'URL required' });
-    }
-    
-    const result = await downloadFile(url, filename);
-    
-    if (result.success) {
-        res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
-        result.stream.pipe(res);
-    } else {
-        res.status(500).json({ error: result.error });
-    }
-});
-
-// Video info endpoint
-app.get('/api/video-info', async (req, res) => {
-    const { url } = req.query;
-    
-    if (!url) {
-        return res.status(400).json({ error: 'URL required' });
-    }
-    
-    const result = await getVideoInfo(url);
-    res.json(result);
-});
-
-// Proxy endpoint (bypass CORS)
+// Proxy endpoint (CORS bypass)
 app.get('/api/proxy', async (req, res) => {
     const { url } = req.query;
     
@@ -401,7 +226,8 @@ app.get('/api/proxy', async (req, res) => {
             responseType: 'arraybuffer',
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            }
+            },
+            timeout: 30000
         });
         
         res.set('Content-Type', response.headers['content-type']);
@@ -417,69 +243,192 @@ app.post('/api/clear-cache', (req, res) => {
     res.json({ success: true, message: 'Cache cleared' });
 });
 
-// Get cache stats
-app.get('/api/cache-stats', (req, res) => {
-    res.json({
-        size: cache.size,
-        keys: Array.from(cache.keys())
-    });
-});
-
-// ============ SERVE STATIC FILES ============
+// ============ SERVE WEB INTERFACE ============
 app.get('/', (req, res) => {
     res.send(`
         <!DOCTYPE html>
         <html>
         <head>
-            <title>ZASS Browser API</title>
+            <title>ZASS Browser</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1">
             <style>
-                body { font-family: Arial; max-width: 800px; margin: 50px auto; padding: 20px; }
-                h1 { color: #667eea; }
-                .endpoint { background: #f5f5f5; padding: 10px; margin: 10px 0; border-radius: 5px; }
-                code { background: #e0e0e0; padding: 2px 5px; border-radius: 3px; }
-                a { color: #667eea; text-decoration: none; }
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                body {
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    min-height: 100vh;
+                }
+                .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+                .header {
+                    background: white;
+                    border-radius: 20px;
+                    padding: 20px;
+                    margin-bottom: 20px;
+                    box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+                }
+                h1 { color: #667eea; margin-bottom: 10px; }
+                .search-box {
+                    display: flex;
+                    gap: 10px;
+                    margin-top: 20px;
+                }
+                .search-box input {
+                    flex: 1;
+                    padding: 15px 20px;
+                    border: 2px solid #e0e0e0;
+                    border-radius: 50px;
+                    font-size: 16px;
+                    outline: none;
+                }
+                .search-box input:focus { border-color: #667eea; }
+                .search-box button {
+                    padding: 15px 30px;
+                    background: linear-gradient(135deg, #667eea, #764ba2);
+                    color: white;
+                    border: none;
+                    border-radius: 50px;
+                    cursor: pointer;
+                    font-size: 16px;
+                    font-weight: 600;
+                }
+                .results {
+                    background: white;
+                    border-radius: 20px;
+                    padding: 20px;
+                    margin-top: 20px;
+                }
+                .result {
+                    padding: 15px;
+                    border-bottom: 1px solid #eee;
+                    cursor: pointer;
+                }
+                .result:hover { background: #f8f9fa; }
+                .result-title { color: #1a73e8; font-size: 18px; margin-bottom: 5px; }
+                .result-url { color: #202124; font-size: 12px; margin-bottom: 5px; word-break: break-all; }
+                .result-snippet { color: #5f6368; font-size: 14px; }
+                .loading {
+                    text-align: center;
+                    padding: 40px;
+                    display: none;
+                }
+                .spinner {
+                    width: 40px;
+                    height: 40px;
+                    border: 3px solid #f3f3f3;
+                    border-top: 3px solid #667eea;
+                    border-radius: 50%;
+                    animation: spin 1s linear infinite;
+                    margin: 0 auto 15px;
+                }
+                @keyframes spin { to { transform: rotate(360deg); } }
+                .status {
+                    text-align: center;
+                    padding: 10px;
+                    color: white;
+                }
+                .engine-select {
+                    margin-left: 10px;
+                    padding: 10px;
+                    border-radius: 10px;
+                    border: 1px solid #ddd;
+                }
             </style>
         </head>
         <body>
-            <h1>🚀 ZASS Browser API</h1>
-            <p>Your browser is running! Use these endpoints:</p>
-            
-            <div class="endpoint">
-                <strong>🔍 Search</strong><br>
-                <code>GET /api/search?q=your+query&engine=google</code><br>
-                <a href="/api/search?q=hello+world" target="_blank">Try it →</a>
+            <div class="container">
+                <div class="header">
+                    <h1>🚀 ZASS Browser</h1>
+                    <p>Search anything - No limits, no censorship</p>
+                    <div class="search-box">
+                        <input type="text" id="searchInput" placeholder="Search or enter URL..." onkeypress="if(event.key==='Enter') search()">
+                        <select id="engineSelect" class="engine-select">
+                            <option value="google">Google</option>
+                            <option value="bing">Bing</option>
+                        </select>
+                        <button onclick="search()">Search</button>
+                    </div>
+                </div>
+                <div id="loading" class="loading"><div class="spinner"></div><p>Loading...</p></div>
+                <div id="results" class="results"></div>
+                <div class="status">
+                    <span id="statusText">✅ ZASS Browser is running</span>
+                </div>
             </div>
-            
-            <div class="endpoint">
-                <strong>🌐 Browse Website</strong><br>
-                <code>GET /api/browse?url=example.com&mode=proxy</code><br>
-                <a href="/api/browse?url=google.com" target="_blank">Try it →</a>
-            </div>
-            
-            <div class="endpoint">
-                <strong>⬇️ Download File</strong><br>
-                <code>GET /api/download?url=file_url&filename=name.ext</code>
-            </div>
-            
-            <div class="endpoint">
-                <strong>🎬 Video Info</strong><br>
-                <code>GET /api/video-info?url=youtube_url</code><br>
-                <a href="/api/video-info?url=https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank">Try it →</a>
-            </div>
-            
-            <div class="endpoint">
-                <strong>🔄 Proxy (CORS Bypass)</strong><br>
-                <code>GET /api/proxy?url=target_url</code>
-            </div>
-            
-            <div class="endpoint">
-                <strong>💚 Health Check</strong><br>
-                <code>GET /api/health</code><br>
-                <a href="/api/health" target="_blank">Try it →</a>
-            </div>
-            
-            <hr>
-            <p>⚡ ZASS Browser - Fast, Light, Powerful</p>
+
+            <script>
+                async function search() {
+                    const query = document.getElementById('searchInput').value.trim();
+                    const engine = document.getElementById('engineSelect').value;
+                    
+                    if (!query) return;
+                    
+                    // Check if it's a URL
+                    if (query.includes('.') && (query.startsWith('http') || query.includes('www.'))) {
+                        let url = query;
+                        if (!url.startsWith('http')) url = 'https://' + url;
+                        window.open(url, '_blank');
+                        return;
+                    }
+                    
+                    showLoading();
+                    
+                    try {
+                        const response = await fetch(\`/api/search?q=\${encodeURIComponent(query)}&engine=\${engine}\`);
+                        const data = await response.json();
+                        
+                        if (data.success && data.results) {
+                            displayResults(data.results, query);
+                            document.getElementById('statusText').innerHTML = \`✅ Found \${data.results.length} results\`;
+                        } else {
+                            document.getElementById('results').innerHTML = \`<p style="text-align:center;padding:40px;">No results found for "\${query}"</p>\`;
+                        }
+                    } catch (error) {
+                        document.getElementById('results').innerHTML = \`<p style="text-align:center;padding:40px;color:red;">Error: \${error.message}</p>\`;
+                    }
+                    
+                    hideLoading();
+                }
+                
+                function displayResults(results, query) {
+                    const container = document.getElementById('results');
+                    container.innerHTML = \`<h3 style="margin-bottom:20px;">🔍 Results for "\${query}" (\${results.length})</h3>\`;
+                    
+                    results.forEach(result => {
+                        const div = document.createElement('div');
+                        div.className = 'result';
+                        div.onclick = () => {
+                            if (result.url) window.open(result.url, '_blank');
+                        };
+                        div.innerHTML = \`
+                            <div class="result-title">\${result.title || result.url}</div>
+                            <div class="result-url">\${result.url}</div>
+                            <div class="result-snippet">\${result.snippet || 'Click to visit'}</div>
+                        \`;
+                        container.appendChild(div);
+                    });
+                }
+                
+                function showLoading() {
+                    document.getElementById('loading').style.display = 'block';
+                    document.getElementById('results').innerHTML = '';
+                }
+                
+                function hideLoading() {
+                    document.getElementById('loading').style.display = 'none';
+                }
+                
+                // Check API health
+                async function checkHealth() {
+                    try {
+                        const response = await fetch('/api/health');
+                        const data = await response.json();
+                        console.log('ZASS Browser:', data);
+                    } catch (error) {
+                        console.error('Health check failed:', error);
+                    }
+                }
+                checkHealth();
+            </script>
         </body>
         </html>
     `);
@@ -489,25 +438,17 @@ app.get('/', (req, res) => {
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`
 ╔══════════════════════════════════════════════════════════════╗
-║     🚀 ZASS BROWSER - LIGHTNING EDITION RUNNING 🚀          ║
+║     🚀 ZASS BROWSER - RUNNING ON HEROKU 🚀                  ║
 ╠══════════════════════════════════════════════════════════════╣
 ║                                                              ║
 ║  📡 Server: http://localhost:${PORT}                        ║
-║  🔍 Search: http://localhost:${PORT}/api/search?q=hello     ║
-║  🌐 Browse: http://localhost:${PORT}/api/browse?url=        ║
-║  💾 Storage: ~50MB total                                    ║
-║  ⚡ Speed: SUPER FAST                                       ║
+║  🔍 Search: /api/search?q=hello                             ║
+║  🌐 Browse: /api/browse?url=example.com                     ║
 ║                                                              ║
-║  ✅ Features: Search, Browse, Download, Proxy, Video Info   ║
-║  ✅ No heavy databases                                      ║
-║  ✅ In-memory cache only                                    ║
+║  ✅ No Chrome needed!                                       ║
+║  ✅ Works on Heroku out of the box!                         ║
+║  ✅ Lightweight & Fast!                                     ║
 ║                                                              ║
 ╚══════════════════════════════════════════════════════════════╝
     `);
-});
-
-// Cleanup on exit
-process.on('SIGTERM', async () => {
-    if (browser) await browser.close();
-    process.exit(0);
 });
