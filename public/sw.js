@@ -147,3 +147,28 @@ self.addEventListener('notificationclick', (event) => {
 });
 
 // Background sync event
+self.addEventListener('sync', (event) => {
+  if (event.tag === 'sync-posts') {
+    event.waitUntil(syncPosts());
+  }
+});
+
+async function syncPosts() {
+  // Sync offline posts when back online
+  const cache = await caches.open('offline-posts');
+  const requests = await cache.keys();
+  
+  for (const request of requests) {
+    const response = await cache.match(request);
+    const data = await response.json();
+    
+    // Retry posting
+    fetch('/api/social/post', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }).then(() => {
+      cache.delete(request);
+    });
+  }
+}
