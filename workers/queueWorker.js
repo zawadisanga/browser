@@ -130,3 +130,18 @@ process.on('SIGTERM', async () => {
 });
 
 logger.info('Queue workers started');
+
+
+
+// workers/queueWorker.js - Simplified worker
+console.log('🚀 Queue worker started');
+
+process.on('SIGTERM', () => {
+  console.log('Worker received SIGTERM, shutting down gracefully');
+  process.exit(0);
+});
+
+// Keep worker alive
+setInterval(() => {
+  console.log('Worker heartbeat:', new Date().toISOString());
+}, 60000);
