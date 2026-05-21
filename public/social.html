@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZASS Social - Connect & Share</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f0f2f5;
+            --text-primary: #1a1a2e;
+            --text-secondary: #65676b;
+            --border-color: #e4e6eb;
+            --accent: #1a73e8;
+            --accent-hover: #1557b0;
+            --danger: #ea4335;
+            --success: #34a853;
+            --warning: #fbbc04;
+        }
+
+        body.dark {
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #2d2d2d;
+            --text-primary: #e8eaed;
+            --text-secondary: #9aa0a6;
+            --border-color: #3c4043;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        /* Navigation */
+        .navbar {
+            background: var(--bg-primary);
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            padding: 12px 24px;
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 24px;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--text-secondary);
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover, .nav-links a.active {
+            color: var(--accent);
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px;
+            display: grid;
+            grid-template-columns: 300px 1fr 300px;
+            gap: 24px;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            position: sticky;
+            top: 80px;
+            height: fit-content;
+        }
+
+        .profile-card {
+            background: var(--bg-primary);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-bottom: 12px;
+        }
+
+        .username {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin: 16px 0;
+            padding: 12px 0;
+            border-top: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-bottom: 4px;
+        }
+
+        .menu-item:hover {
+            background: var(--bg-secondary);
+        }
+
+        .menu-item.active {
+            background: var(--accent);
+            color: white;
+        }
+
+        /* Feed */
+        .feed {
+            background: var(--bg-primary);
+            border-radius: 16px;
+            padding: 20px;
+        }
+
+        .create-post {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        .post-input {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .post-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+        }
+
+        .post-input textarea {
+            flex: 1;
+            background: var(--bg-secondary);
+            border: none;
+            border-radius: 24px;
+            padding: 12px 16px;
+            resize: none;
+            font-family: inherit;
+            font-size: 1rem;
+            color: var(--text-primary);
+        }
+
+        .post-input textarea:focus {
+            outline: none;
+        }
+
+        .post-actions {
+            display: flex;
+            gap: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .post-action {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+            color: var(--text-secondary);
+        }
+
+        .post-action:hover {
+            background: var(--bg-secondary);
+        }
+
+        /* Post Card */
+        .post-card {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .post-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .post-avatar-lg {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .post-user-info {
+            flex: 1;
+        }
+
+        .post-username {
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .post-time {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .post-content {
+            margin-bottom: 12px;
+            line-height: 1.5;
+        }
+
+        .post-media {
+            margin-bottom: 12px;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .post-media img, .post-media video {
+            width: 100%;
+            max-height: 500px;
+            object-fit: cover;
+        }
+
+        .post-stats {
+            display: flex;
+            gap: 16px;
+            padding: 12px 0;
+            border-top: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .post-buttons {
+            display: flex;
+            gap: 8px;
+            padding-top: 8px;
+        }
+
+        .post-button {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+            color: var(--text-secondary);
+        }
+
+        .post-button:hover {
+            background: var(--bg-secondary);
+        }
+
+        .post-button.liked {
+            color: var(--danger);
+        }
+
+        /* Trending Sidebar */
+        .trending-card {
+            background: var(--bg-primary);
+            border-radius: 16px;
+            padding: 20px;
+            position: sticky;
+            top: 80px;
+        }
+
+        .trending-item {
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+        }
+
+        .trending-item:last-child {
+            border-bottom: none;
+        }
+
+        .trending-tag {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .trending-count {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: var(--bg-primary);
+            border-radius: 16px;
+            width: 500px;
+            max-width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: inherit;
+        }
+
+        .modal-footer {
+            padding: 20px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        .btn-primary, .btn-secondary {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        /* Responsive */
+        @media (max-width: 1000px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar, .trending-card {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">
+                <i class="fas fa-users"></i>
+                <span>ZASS Social</span>
+            </div>
+            <div class="nav-links">
+                <a href="#" class="active" data-page="feed"><i class="fas fa-home"></i> Feed</a>
+                <a href="#" data-page="explore"><i class="fas fa-compass"></i> Explore</a>
+                <a href="#" data-page="notifications"><i class="fas fa-bell"></i> Notifications</a>
+                <a href="#" data-page="profile"><i class="fas fa-user"></i> Profile</a>
+            </div>
+            <div class="auth-buttons" id="authButtons">
+                <button class="btn-secondary" onclick="showLoginModal()">Login</button>
+                <button class="btn-primary" onclick="showRegisterModal()">Sign Up</button>
+            </div>
+            <div class="user-menu" id="userMenu" style="display: none;">
+                <img id="userAvatar" src="/assets/default-avatar.png" alt="Avatar" style="width: 40px; height: 40px; border-radius: 50%; cursor: pointer;" onclick="showProfileModal()">
+            </div>
+        </div>
+    </nav>
+
+    <div class="container" id="mainContainer">
+        <!-- Left Sidebar -->
+        <div class="sidebar" id="leftSidebar">
+            <div class="profile-card" id="profileCard" style="display: none;">
+                <img id="profileAvatar" class="avatar" src="/assets/default-avatar.png" alt="Avatar">
+                <div class="username" id="profileUsername">Username</div>
+                <div class="bio" id="profileBio" style="font-size: 0.875rem; color: var(--text-secondary);">Bio goes here</div>
+                <div class="stats">
+                    <div class="stat">
+                        <div class="stat-value" id="postCount">0</div>
+                        <div class="stat-label">Posts</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value" id="followerCount">0</div>
+                        <div class="stat-label">Followers</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value" id="followingCount">0</div>
+                        <div class="stat-label">Following</div>
+                    </div>
+                </div>
+                <button class="btn-primary" onclick="showCreatePostModal()" style="width: 100%;">Create Post</button>
+            </div>
+            
+            <div class="menu">
+                <div class="menu-item active" data-menu="feed">
+                    <i class="fas fa-newspaper"></i> <span>Feed</span>
+                </div>
+                <div class="menu-item" data-menu="trending">
+                    <i class="fas fa-fire"></i> <span>Trending</span>
+                </div>
+                <div class="menu-item" data-menu="following">
+                    <i class="fas fa-user-friends"></i> <span>Following</span>
+                </div>
+                <div class="menu-item" data-menu="saved">
+                    <i class="fas fa-bookmark"></i> <span>Saved</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Feed -->
+        <div class="feed" id="feedContainer">
+            <div class="create-post" id="createPostBox" style="display: none;">
+                <div class="post-input">
+                    <img id="createPostAvatar" class="post-avatar" src="/assets/default-avatar.png" alt="Avatar">
+                    <textarea id="postContent" placeholder="What's on your mind?" rows="2"></textarea>
+                </div>
+                <div class="post-actions">
+                    <div class="post-action" onclick="document.getElementById('postImage').click()">
+                        <i class="fas fa-image"></i> Photo/Video
+                    </div>
+                    <div class="post-action" onclick="document.getElementById('postFile').click()">
+                        <i class="fas fa-file-alt"></i> File
+                    </div>
+                    <div class="post-action" onclick="createPost()">
+                        <i class="fas fa-paper-plane"></i> Post
+                    </div>
+                </div>
+                <input type="file" id="postImage" style="display: none;" accept="image/*,video/*">
+                <input type="file" id="postFile" style="display: none;">
+            </div>
+            
+            <div id="postsContainer">
+                <div style="text-align: center; padding: 40px;">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 48px;"></i>
+                    <p>Loading posts...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Sidebar - Trending -->
+        <div class="trending-card">
+            <h3 style="margin-bottom: 16px;"><i class="fas fa-fire"></i> Trending Now</h3>
+            <div id="trendingContainer">
+                <div style="text-align: center; padding: 20px;">Loading...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Post Modal -->
+    <div class="modal" id="createPostModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Create Post</h2>
+                <button onclick="closeModal('createPostModal')" style="background: none; border: none; font-size: 24px; cursor: pointer;">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <textarea id="modalPostContent" placeholder="What's on your mind?" rows="4" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-primary);"></textarea>
+                </div>
+                <div class="form-group">
+                    <input type="text" id="postTags" placeholder="Tags (comma separated)">
+                </div>
+                <div class="form-group">
+                    <select id="postPrivacy">
+                        <option value="public">Public</option>
+                        <option value="friends">Friends</option>
+                        <option value="only_me">Only Me</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <input type="checkbox" id="isAdult"> <label>Contains adult content</label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeModal('createPostModal')">Cancel</button>
+                <button class="btn-primary" onclick="submitPost()">Post</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('token');
+        let currentUser = null;
+        let currentPage = 'feed';
+        
+        // Check authentication
+        if (token) {
+            fetchUser();
+            document.getElementById('authButtons').style.display = 'none';
+            document.getElementById('userMenu').style.display = 'block';
+            document.getElementById('profileCard').style.display = 'block';
+            document.getElementById('createPostBox').style.display = 'block';
+        } else {
+            document.getElementById('profileCard').style.display = 'none';
+            document.getElementById('createPostBox').style.display = 'none';
+        }
+        
+        async function fetchUser() {
+            try {
+                const response = await fetch('/api/auth/me', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    currentUser = data.user;
+                    document.getElementById('profileUsername').textContent = currentUser.username;
+                    document.getElementById('profileBio').textContent = currentUser.bio || 'No bio yet';
+                    document.getElementById('postCount').textContent = currentUser.stats?.posts || 0;
+                    document.getElementById('followerCount').textContent = currentUser.stats?.followers?.length || 0;
+                    document.getElementById('followingCount').textContent = currentUser.stats?.following?.length || 0;
+                    if (currentUser.avatar) {
+                        document.getElementById('profileAvatar').src = currentUser.avatar;
+                        document.getElementById('createPostAvatar').src = currentUser.avatar;
+                        document.getElementById('userAvatar').src = currentUser.avatar;
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching user:', error);
+            }
+        }
+        
+        async function loadFeed(page = 1) {
+            try {
+                const response = await fetch(`/api/social/feed?page=${page}&limit=20`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    renderPosts(data.posts);
+                }
+            } catch (error) {
+                console.error('Error loading feed:', error);
+            }
+        }
+        
+        async function loadTrending() {
+            try {
+                const response = await fetch('/api/social/trending?limit=10');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const container = document.getElementById('trendingContainer');
+                    container.innerHTML = data.trending.map(trend => `
+                        <div class="trending-item" onclick="searchHashtag('${trend.hashtag || 'trending'}')">
+                            <div class="trending-tag">#${trend.hashtag || 'trending'}</div>
+                            <div class="trending-count">${trend.stats?.views || 0} views</div>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Error loading trending:', error);
+            }
+        }
+        
+        function renderPosts(posts) {
+            const container = document.getElementById('postsContainer');
+            
+            if (!posts || posts.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 40px;">
+                        <i class="fas fa-newspaper" style="font-size: 48px; color: var(--text-secondary);"></i>
+                        <p>No posts yet. Be the first to create a post!</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = posts.map(post => `
+                <div class="post-card" data-post-id="${post.id}">
+                    <div class="post-header">
+                        <img class="post-avatar-lg" src="${post.user?.avatar || '/assets/default-avatar.png'}" alt="Avatar">
+                        <div class="post-user-info">
+                            <div class="post-username" onclick="viewProfile('${post.user?._id}')">${post.user?.fullName || post.user?.username}</div>
+                            <div class="post-time">${formatTime(post.createdAt)}</div>
+                        </div>
+                        <i class="fas fa-ellipsis-h" style="cursor: pointer;" onclick="showPostMenu('${post.id}')"></i>
+                    </div>
+                    <div class="post-content">${post.content || ''}</div>
+                    ${post.mediaUrls && post.mediaUrls[0] ? `
+                        <div class="post-media">
+                            ${post.mediaUrls[0].includes('mp4') ? 
+                                `<video src="${post.mediaUrls[0]}" controls></video>` : 
+                                `<img src="${post.mediaUrls[0]}" alt="Post media">`}
+                        </div>
+                    ` : ''}
+                    <div class="post-stats">
+                        <span><i class="fas fa-heart"></i> ${post.stats?.likes || 0}</span>
+                        <span><i class="fas fa-comment"></i> ${post.stats?.comments || 0}</span>
+                        <span><i class="fas fa-share"></i> ${post.stats?.shares || 0}</span>
+                        <span><i class="fas fa-eye"></i> ${post.stats?.views || 0}</span>
+                    </div>
+                    <div class="post-buttons">
+                        <div class="post-button ${post.likedByUser ? 'liked' : ''}" onclick="likePost('${post.id}')">
+                            <i class="fas fa-heart"></i> Like
+                        </div>
+                        <div class="post-button" onclick="showCommentModal('${post.id}')">
+                            <i class="fas fa-comment"></i> Comment
+                        </div>
+                        <div class="post-button" onclick="sharePost('${post.id}')">
+                            <i class="fas fa-share"></i> Share
+                        </div>
+                        <div class="post-button ${post.savedByUser ? 'saved' : ''}" onclick="savePost('${post.id}')">
+                            <i class="fas fa-bookmark"></i> Save
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        async function createPost() {
+            const content = document.getElementById('postContent').value;
+            if (!content.trim()) {
+                alert('Please enter some content');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/social/post', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        type: 'post',
+                        content: content
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    document.getElementById('postContent').value = '';
+                    loadFeed();
+                    showToast('Post created!');
+                }
+            } catch (error) {
+                console.error('Error creating post:', error);
+            }
+        }
+        
+        async function likePost(postId) {
+            try {
+                const response = await fetch(`/api/social/post/${postId}/like`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    loadFeed();
+                }
+            } catch (error) {
+                console.error('Error liking post:', error);
+            }
+        }
+        
+        async function savePost(postId) {
+            try {
+                const response = await fetch(`/api/social/post/${postId}/save`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    showToast('Post saved!');
+                    loadFeed();
+                }
+            } catch (error) {
+                console.error('Error saving post:', error);
+            }
+        }
+        
+        async function sharePost(postId) {
+            try {
+                const response = await fetch(`/api/social/post/${postId}/share`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    showToast('Post shared!');
+                    loadFeed();
+                }
+            } catch (error) {
+                console.error('Error sharing post:', error);
+            }
+        }
+        
+        function formatTime(timestamp) {
+            const date = new Date(timestamp);
+            const now = new Date();
+            const diff = now - date;
+            
+            if (diff < 60000) return 'Just now';
+            if (diff < 3600000) return `${Math.floor(diff / 60000)} minutes ago`;
+            if (diff < 86400000) return `${Math.floor(diff / 3600000)} hours ago`;
+            if (diff < 604800000) return `${Math.floor(diff / 86400000)} days ago`;
+            return date.toLocaleDateString();
+        }
+        
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.textContent = message;
+            toast.style.position = 'fixed';
+            toast.style.bottom = '20px';
+            toast.style.left = '50%';
+            toast.style.transform = 'translateX(-50%)';
+            toast.style.backgroundColor = '#333';
+            toast.style.color = 'white';
+            toast.style.padding = '10px 20px';
+            toast.style.borderRadius = '8px';
+            toast.style.zIndex = '9999';
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+        
+        function viewProfile(userId) {
+            window.location.href = `/profile.html?userId=${userId}`;
+        }
+        
+        function searchHashtag(tag) {
+            window.location.href = `/hashtag.html?tag=${tag}`;
+        }
+        
+        function showCreatePostModal() {
+            document.getElementById('createPostModal').style.display = 'flex';
+        }
+        
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+        
+        function submitPost() {
+            // Implement post submission
+            closeModal('createPostModal');
+        }
+        
+        // Menu navigation
+        document.querySelectorAll('.menu-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const menu = item.dataset.menu;
+                document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
+                item.classList.add('active');
+                
+                if (menu === 'feed') {
+                    loadFeed();
+                } else if (menu === 'trending') {
+                    // Load trending content
+                } else if (menu === 'following') {
+                    loadFollowingFeed();
+                } else if (menu === 'saved') {
+                    loadSavedPosts();
+                }
+            });
+        });
+        
+        async function loadFollowingFeed() {
+            try {
+                const response = await fetch('/api/social/feed?type=following', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                if (data.success) renderPosts(data.posts);
+            } catch (error) {
+                console.error('Error loading following feed:', error);
+            }
+        }
+        
+        async function loadSavedPosts() {
+            try {
+                const response = await fetch('/api/social/saved', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                if (data.success) renderPosts(data.posts);
+            } catch (error) {
+                console.error('Error loading saved posts:', error);
+            }
+        }
+        
+        // Initialize
+        if (token) {
+            loadFeed();
+            loadTrending();
+        }
+    </script>
+</body>
+</html>
