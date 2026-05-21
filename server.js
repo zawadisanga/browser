@@ -738,47 +738,153 @@ app.post('/api/media/download', async (req, res) => {
 });
 
 // Browser proxy endpoint
+// ============ BROWSER ROUTES (IMEREKEBISHWA) ============
+
+// Browse any website - FIXED VERSION
 app.get('/api/browser/browse', async (req, res) => {
-    const targetUrl = req.query.url;
+  const { url } = req.query;
+  
+  console.log('🔍 Browser request for URL:', url);
+  
+  if (!url) {
+    return res.status(400).json({ 
+      success: false, 
+      error: 'URL parameter required' 
+    });
+  }
+  
+  try {
+    let targetUrl = url;
     
-    if (!targetUrl) {
-        return res.status(400).json({ success: false, error: 'URL required' });
+    // Add https if no protocol
+    if (!targetUrl.startsWith('http')) {
+      targetUrl = 'https://' + targetUrl;
     }
     
-    try {
-        let url = targetUrl;
-        if (!url.startsWith('http')) url = 'https://' + url;
-        
-        const response = await axios.get(url, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'Accept': 'text/html,application/xhtml+xml'
-            },
-            timeout: 30000
-        });
-        
-        let html = response.data;
-        let title = url;
-        
-        try {
-            const dom = new JSDOM(html);
-            title = dom.window.document.title || url;
-        } catch (e) {}
-        
-        res.json({
-            success: true,
-            url: url,
-            title: title,
-            html: html
-        });
-    } catch (error) {
-        res.json({
-            success: false,
-            error: error.message,
-            url: targetUrl,
-            title: 'Error'
-        });
-    }
+    console.log('🌐 Fetching:', targetUrl);
+    
+    const response = await axios.get(targetUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept-Encoding': 'gzip, deflate, br'
+      },
+      timeout: 30000,
+      maxRedirects: 5
+    });
+    
+    // Get the content
+    let content = response.data;
+    
+    // Replace Google branding with ZASS branding
+    content = content.replace(/<title>.*?<\/title>/gi, '<title>ZASS Browser - ZASS Only</title>');
+    content = content.replace(/Google/gi, 'ZASS');
+    content = content.replace(/google/gi, 'zass');
+    content = content.replace(/favicon\.ico/gi, '/favicon.ico');
+    
+    const result = {
+      success: true,
+      url: targetUrl,
+      content: content,
+      title: 'ZASS Browser - ZASS Only',
+      status: response.status,
+      contentType: response.headers['content-type'],
+      timestamp: new Date().toISOString()
+    };
+    
+    console.log('✅ Browser request successful:', targetUrl);
+    res.json(result);
+    
+  } catch (error) {
+    console.error('❌ Browser error:', error.message);
+    
+    // Return fallback page
+    const fallbackHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+          <title>ZASS Browser - ZASS Only</title>
+          <meta charset="UTF-8">
+          <style>
+              body {
+                  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+                  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                  min-height: 100vh;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  margin: 0;
+                  padding: 20px;
+              }
+              .error-container {
+                  background: white;
+                  border-radius: 20px;
+                  padding: 40px;
+                  max-width: 500px;
+                  text-align: center;
+                  box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+              }
+              .error-icon {
+                  font-size: 64px;
+                  margin-bottom: 20px;
+              }
+              h1 { color: #333; margin-bottom: 10px; }
+              p { color: #666; margin-bottom: 20px; line-height: 1.6; }
+              .url { 
+                  background: #f5f5f5; 
+                  padding: 10px; 
+                  border-radius: 10px; 
+                  word-break: break-all;
+                  margin-bottom: 20px;
+              }
+              .back-btn {
+                  background: linear-gradient(135deg, #667eea, #764ba2);
+                  color: white;
+                  border: none;
+                  padding: 12px 30px;
+                  border-radius: 25px;
+                  cursor: pointer;
+                  font-size: 16px;
+                  font-weight: 600;
+              }
+              .back-btn:hover {
+                  transform: translateY(-2px);
+                  box-shadow: 0 5px 15px rgba(102,126,234,0.4);
+              }
+          </style>
+      </head>
+      <body>
+          <div class="error-container">
+              <div class="error-icon">🌐</div>
+              <h1>ZASS Browser</h1>
+              <p>Unable to load the requested website. This could be due to:</p>
+              <ul style="text-align: left; color: #666;">
+                  <li>Website might be down</li>
+                  <li>Website blocked access</li>
+                  <li>Invalid URL format</li>
+              </ul>
+              <div class="url">${targetUrl}</div>
+              <button class="back-btn" onclick="window.location.href='/browser'">← Back to Browser</button>
+          </div>
+          <script>
+              // Try to load the URL directly as fallback
+              setTimeout(() => {
+                  window.location.href = '${targetUrl}';
+              }, 3000);
+          </script>
+      </body>
+      </html>
+    `;
+    
+    res.json({
+      success: false,
+      url: targetUrl,
+      content: fallbackHtml,
+      error: error.message,
+      fallback: true
+    });
+  }
 });
 
 // ============ WEBSOCKET FOR CHAT ============
