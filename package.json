@@ -4,13 +4,14 @@
   "description": "ZASS Ultimate Complete Ecosystem - Browser, Social, Media, Chat, AI",
   "main": "server.js",
   "engines": {
-    "node": "22.x",
-    "npm": "10.x"
+    "node": "24.x",
+    "npm": "11.x"
   },
   "scripts": {
     "start": "node server.js",
     "postinstall": "echo 'Build completed!'"
-  },
+  }
+}
   "dependencies": {
     "express": "^4.18.2",
     "axios": "^1.6.2",
@@ -30,3 +31,4 @@
     "ytdl-core": "^4.11.5"
   }
 }
+
