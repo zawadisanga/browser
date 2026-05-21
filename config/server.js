@@ -1,10 +1,10 @@
-// server.js - Heroku optimized entry point
+// server.js - Minimal but functional for Heroku
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
 const morgan = require('morgan');
-require('dotenv').config();
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -19,72 +19,97 @@ app.use(morgan('combined'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Health check endpoint (required by Heroku)
+// Serve static files if public directory exists
+app.use(express.static(path.join(__dirname, 'public'), { fallthrough: true }));
+
+// Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'ok',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     memory: process.memoryUsage(),
-    version: '20.0.0'
+    node_version: process.version
   });
 });
 
 // Root endpoint
 app.get('/', (req, res) => {
   res.json({
-    name: 'ZASS Mega Ecosystem Ultimate',
-    version: '20.0.0',
-    status: 'running on Heroku',
+    name: 'ZASS Mega Ecosystem',
+    version: '10.0.0',
+    status: 'running',
+    environment: process.env.NODE_ENV || 'development',
     endpoints: {
       health: '/health',
-      api: '/api/v1',
-      docs: '/docs'
+      status: '/api/status',
+      docs: '/api/docs'
     }
   });
 });
 
-// API routes
-app.get('/api/v1/status', (req, res) => {
+// API status endpoint
+app.get('/api/status', (req, res) => {
   res.json({
     status: 'operational',
-    environment: process.env.NODE_ENV || 'development',
-    platform: 'Heroku',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
     services: {
-      database: process.env.MONGODB_URI ? 'configured' : 'pending',
-      redis: process.env.REDIS_URL ? 'configured' : 'pending'
+      api: 'healthy',
+      database: process.env.DATABASE_URL ? 'configured' : 'not configured',
+      redis: process.env.REDIS_URL ? 'configured' : 'not configured'
     }
   });
 });
 
-// Error handling middleware
+// Simple test endpoint
+app.get('/api/test', (req, res) => {
+  res.json({ message: 'API is working!', timestamp: new Date().toISOString() });
+});
+
+// Error handler
 app.use((err, req, res, next) => {
   console.error('Error:', err.message);
+  console.error(err.stack);
   res.status(500).json({
     error: 'Internal Server Error',
-    message: process.env.NODE_ENV === 'development' ? err.message : undefined
+    message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
   });
 });
 
 // 404 handler
 app.use((req, res) => {
-  res.status(404).json({ error: 'Route not found' });
+  res.status(404).json({ 
+    error: 'Not Found',
+    path: req.originalUrl,
+    method: req.method
+  });
 });
 
 // Start server
 const server = app.listen(PORT, () => {
-  console.log(`🚀 ZASS Ultimate running on port ${PORT}`);
-  console.log(`📡 Health check: https://your-app.herokuapp.com/health`);
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📍 Health check: http://localhost:${PORT}/health`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🕐 Started at: ${new Date().toISOString()}`);
 });
 
 // Graceful shutdown for Heroku
 process.on('SIGTERM', () => {
-  console.log('SIGTERM received, closing server...');
+  console.log('SIGTERM signal received: closing HTTP server');
   server.close(() => {
-    console.log('Server closed');
+    console.log('HTTP server closed');
     process.exit(0);
   });
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
 module.exports = app;
