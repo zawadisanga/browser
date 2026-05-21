@@ -1,6 +1,5 @@
 // server.js - ZASS ULTIMATE COMPLETE ECOSYSTEM
-// Merged: All features from Mega Ecosystem + Ultimate System
-// Heroku Compatible - No engines.npm conflicts
+// Fixed for Heroku - No dependency conflicts
 
 require('dotenv').config();
 const express = require('express');
@@ -38,8 +37,7 @@ let data = {
   downloads: [],
   analytics: [],
   bookmarks: [],
-  history: [],
-  sessions: []
+  history: []
 };
 
 const DATA_FILE = './data.json';
@@ -63,7 +61,7 @@ const defaultAdmin = {
   role: 'super_admin',
   avatar: 'https://ui-avatars.com/api/?name=Admin&background=667eea&color=fff',
   createdAt: new Date().toISOString(),
-  stats: { posts: 0, followers: 0, following: 0, downloads: 0 }
+  stats: { posts: 0, downloads: 0 }
 };
 
 if (!data.users.find(u => u.username === 'admin')) {
@@ -164,14 +162,10 @@ app.get('/health', (req, res) => {
     features: [
       'browser', 'search', 'media_downloader', 'social', 'chat',
       'ai_chatbot', 'file_upload', 'analytics', 'authentication',
-      'admin_panel', 'bookmarks', 'history', 'real_time'
+      'admin_panel', 'bookmarks', 'history'
     ],
     timestamp: new Date().toISOString()
   });
-});
-
-app.get('/ready', (req, res) => {
-  res.json({ ready: true, uptime: process.uptime() });
 });
 
 // ============ AUTH ROUTES ============
@@ -198,7 +192,7 @@ app.post('/api/auth/register', async (req, res) => {
     role: 'user',
     avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=667eea&color=fff`,
     createdAt: new Date().toISOString(),
-    stats: { posts: 0, followers: 0, following: 0, downloads: 0 }
+    stats: { posts: 0, downloads: 0 }
   };
   
   data.users.push(newUser);
@@ -262,7 +256,7 @@ app.post('/api/auth/logout', (req, res) => {
 
 // ============ BROWSER ROUTES ============
 app.get('/api/browser/browse', async (req, res) => {
-  const { url, screenshot = 'false' } = req.query;
+  const { url } = req.query;
   
   if (!url) {
     return res.status(400).json({ error: 'URL parameter required' });
@@ -278,11 +272,9 @@ app.get('/api/browser/browse', async (req, res) => {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Accept-Encoding': 'gzip, deflate, br'
+        'Accept-Language': 'en-US,en;q=0.9'
       },
-      timeout: 30000,
-      maxContentLength: 50 * 1024 * 1024
+      timeout: 30000
     });
     
     const result = {
@@ -322,8 +314,7 @@ app.get('/api/browser/browse', async (req, res) => {
       success: false,
       url: targetUrl,
       error: error.message,
-      fallback: true,
-      suggestion: 'Try using https:// or check if the website is accessible'
+      fallback: true
     });
   }
 });
@@ -385,11 +376,7 @@ app.get('/api/search/web', async (req, res) => {
   const searchEngines = {
     google: `https://www.google.com/search?q=${encodeURIComponent(q)}&num=${limit}`,
     bing: `https://www.bing.com/search?q=${encodeURIComponent(q)}&count=${limit}`,
-    duckduckgo: `https://duckduckgo.com/html/?q=${encodeURIComponent(q)}`,
-    yahoo: `https://search.yahoo.com/search?p=${encodeURIComponent(q)}&n=${limit}`,
-    youtube: `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`,
-    twitter: `https://twitter.com/search?q=${encodeURIComponent(q)}`,
-    reddit: `https://www.reddit.com/search/?q=${encodeURIComponent(q)}`
+    youtube: `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`
   };
   
   try {
@@ -434,12 +421,6 @@ app.get('/api/search/web', async (req, res) => {
           results.push({ title, url: link, thumbnail, type: 'video' });
         }
       });
-    }
-    
-    // Track search
-    if (req.user) {
-      data.analytics.push({ type: 'search', userId: req.user.id, query: q, engine, resultsCount: results.length, timestamp: new Date().toISOString() });
-      saveData();
     }
     
     res.json({
@@ -488,14 +469,11 @@ app.get('/api/media/info', async (req, res) => {
         thumbnail: info.videoDetails.thumbnails[0]?.url,
         author: info.videoDetails.author.name,
         views: info.videoDetails.viewCount,
-        likes: info.videoDetails.likes,
-        formats: info.formats.filter(f => f.hasVideo || f.hasAudio).map(f => ({
+        formats: info.formats.filter(f => f.hasVideo || f.hasAudio).slice(0, 10).map(f => ({
           quality: f.qualityLabel || f.quality,
           container: f.container,
           hasVideo: f.hasVideo,
-          hasAudio: f.hasAudio,
-          bitrate: f.bitrate,
-          size: f.contentLength
+          hasAudio: f.hasAudio
         }))
       });
     } else {
@@ -527,14 +505,6 @@ app.get('/api/media/download', async (req, res) => {
       res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`);
       res.setHeader('Content-Type', audioOnly === 'true' ? 'audio/mpeg' : 'video/mp4');
       
-      // Track download
-      if (req.user) {
-        data.downloads.push({ url, filename, userId: req.user.id, timestamp: new Date().toISOString() });
-        const user = data.users.find(u => u.id === req.user.id);
-        if (user) user.stats.downloads = (user.stats.downloads || 0) + 1;
-        saveData();
-      }
-      
       ytdl(url, options).pipe(res);
     } else {
       res.status(400).json({ error: 'Unsupported platform' });
@@ -561,7 +531,7 @@ app.get('/api/social/feed', authMiddleware, (req, res) => {
 });
 
 app.post('/api/social/post', authMiddleware, (req, res) => {
-  const { content, type = 'text', mediaUrl, mediaType } = req.body;
+  const { content, type = 'text', mediaUrl } = req.body;
   
   if (!content && !mediaUrl) {
     return res.status(400).json({ error: 'Content or media required' });
@@ -574,7 +544,6 @@ app.post('/api/social/post', authMiddleware, (req, res) => {
     content: content || '',
     type,
     mediaUrl,
-    mediaType,
     likes: 0,
     comments: [],
     shares: 0,
@@ -592,20 +561,9 @@ app.post('/api/social/post', authMiddleware, (req, res) => {
   res.status(201).json({ success: true, post: newPost });
 });
 
-app.get('/api/social/post/:id', async (req, res) => {
-  const { id } = req.params;
-  const post = data.posts.find(p => p.id === id);
-  
-  if (!post) {
-    return res.status(404).json({ error: 'Post not found' });
-  }
-  
-  res.json({ success: true, post });
-});
-
-app.post('/api/social/post/:id/like', authMiddleware, (req, res) => {
-  const { id } = req.params;
-  const post = data.posts.find(p => p.id === id);
+app.post('/api/social/like/:postId', authMiddleware, (req, res) => {
+  const { postId } = req.params;
+  const post = data.posts.find(p => p.id === postId);
   
   if (!post) {
     return res.status(404).json({ error: 'Post not found' });
@@ -617,15 +575,15 @@ app.post('/api/social/post/:id/like', authMiddleware, (req, res) => {
   res.json({ success: true, likes: post.likes });
 });
 
-app.post('/api/social/post/:id/comment', authMiddleware, (req, res) => {
-  const { id } = req.params;
+app.post('/api/social/comment/:postId', authMiddleware, (req, res) => {
+  const { postId } = req.params;
   const { comment } = req.body;
   
   if (!comment) {
     return res.status(400).json({ error: 'Comment required' });
   }
   
-  const post = data.posts.find(p => p.id === id);
+  const post = data.posts.find(p => p.id === postId);
   if (!post) {
     return res.status(404).json({ error: 'Post not found' });
   }
@@ -676,11 +634,6 @@ app.post('/api/chat/send', authMiddleware, (req, res) => {
   res.status(201).json({ success: true, message: newMessage });
 });
 
-app.get('/api/chat/rooms', authMiddleware, (req, res) => {
-  const rooms = [...new Set(data.messages.map(m => m.room))];
-  res.json({ success: true, rooms });
-});
-
 // ============ AI CHATBOT ROUTE ============
 app.post('/api/ai/chat', async (req, res) => {
   const { message } = req.body;
@@ -690,28 +643,26 @@ app.post('/api/ai/chat', async (req, res) => {
   }
   
   const responses = {
-    greeting: ["Hello! How can I help you today?", "Hi there! Welcome to ZASS!", "Hey! What can I do for you?", "Greetings! How may I assist you?"],
-    browser: ["You can browse any website using our browser. No restrictions, no limits!", "Go to the Browser tab and enter any URL you want!", "Our browser supports all websites, including adult content."],
-    download: ["You can download videos from YouTube by pasting the URL in Media section!", "Supported platforms: YouTube (more coming soon)", "Just paste the video URL and click download!"],
-    search: ["Use the search bar to find anything across Google, Bing, YouTube, Twitter, and more!", "Our multi-engine search gives you results from multiple sources."],
-    social: ["Create posts, share content, like and comment on others' posts!", "Connect with friends and grow your following on ZASS Social!"],
+    greeting: ["Hello! How can I help you today?", "Hi there! Welcome to ZASS!", "Hey! What can I do for you?"],
+    browser: ["You can browse any website using our browser. No restrictions, no limits!", "Go to the Browser tab and enter any URL you want!"],
+    download: ["You can download videos from YouTube by pasting the URL in Media section!", "Supported platforms: YouTube (more coming soon)"],
+    search: ["Use the search bar to find anything across Google, Bing, YouTube, and more!"],
+    social: ["Create posts, share content, like and comment on others' posts!", "Connect with friends on ZASS Social!"],
     chat: ["Join chat rooms and talk with other users in real-time!", "Create private rooms or join public conversations."],
     help: ["I can help you with:\n- Web browsing\n- Downloading videos\n- Searching the web\n- Social media posts\n- Chat with friends\n\nWhat would you like to do?"],
-    about: ["ZASS Ultimate Ecosystem is the all-in-one platform for browsing, searching, downloading, social media, and chat. No limits, no censorship!"],
-    default: ["I'm here to help! Try asking about browsing, downloads, search, social media, or chat features!"]
+    default: ["I'm here to help! Try asking about browsing, downloads, search, social media, or chat!"]
   };
   
   const lowerMsg = message.toLowerCase();
   let intent = 'default';
   
-  if (lowerMsg.includes('hello') || lowerMsg.includes('hi') || lowerMsg.includes('hey') || lowerMsg.includes('greetings')) intent = 'greeting';
-  else if (lowerMsg.includes('browse') || lowerMsg.includes('website') || lowerMsg.includes('url') || lowerMsg.includes('web')) intent = 'browser';
-  else if (lowerMsg.includes('download') || lowerMsg.includes('video') || lowerMsg.includes('youtube') || lowerMsg.includes('mp4')) intent = 'download';
-  else if (lowerMsg.includes('search') || lowerMsg.includes('find') || lowerMsg.includes('look') || lowerMsg.includes('google')) intent = 'search';
-  else if (lowerMsg.includes('social') || lowerMsg.includes('post') || lowerMsg.includes('feed') || lowerMsg.includes('like')) intent = 'social';
-  else if (lowerMsg.includes('chat') || lowerMsg.includes('message') || lowerMsg.includes('talk')) intent = 'chat';
-  else if (lowerMsg.includes('help') || lowerMsg.includes('what') || lowerMsg.includes('how')) intent = 'help';
-  else if (lowerMsg.includes('about') || lowerMsg.includes('what is') || lowerMsg.includes('tell me')) intent = 'about';
+  if (lowerMsg.includes('hello') || lowerMsg.includes('hi') || lowerMsg.includes('hey')) intent = 'greeting';
+  else if (lowerMsg.includes('browse') || lowerMsg.includes('website') || lowerMsg.includes('url')) intent = 'browser';
+  else if (lowerMsg.includes('download') || lowerMsg.includes('video') || lowerMsg.includes('youtube')) intent = 'download';
+  else if (lowerMsg.includes('search') || lowerMsg.includes('find') || lowerMsg.includes('google')) intent = 'search';
+  else if (lowerMsg.includes('social') || lowerMsg.includes('post') || lowerMsg.includes('feed')) intent = 'social';
+  else if (lowerMsg.includes('chat') || lowerMsg.includes('message')) intent = 'chat';
+  else if (lowerMsg.includes('help')) intent = 'help';
   
   const responseList = responses[intent];
   const reply = responseList[Math.floor(Math.random() * responseList.length)];
@@ -725,14 +676,6 @@ app.post('/api/upload', authMiddleware, upload.single('file'), async (req, res) 
     return res.status(400).json({ error: 'No file uploaded' });
   }
   
-  let processedBuffer = null;
-  let metadata = {};
-  
-  if (req.file.mimetype.startsWith('image/')) {
-    processedBuffer = await sharp(req.file.path).resize(1200, 1200, { fit: 'inside' }).toBuffer();
-    metadata = { width: 1200, height: 1200, format: 'jpeg' };
-  }
-  
   const fileUrl = `/uploads/${req.file.filename}`;
   
   res.json({
@@ -743,8 +686,7 @@ app.post('/api/upload', authMiddleware, upload.single('file'), async (req, res) 
       originalName: req.file.originalname,
       size: req.file.size,
       mimetype: req.file.mimetype,
-      url: fileUrl,
-      metadata
+      url: fileUrl
     }
   });
 });
@@ -756,7 +698,6 @@ app.get('/api/dashboard/stats', authMiddleware, (req, res) => {
   const user = data.users.find(u => u.id === req.user.id);
   const userPosts = data.posts.filter(p => p.userId === req.user.id);
   const userMessages = data.messages.filter(m => m.userId === req.user.id);
-  const userDownloads = data.downloads.filter(d => d.userId === req.user.id);
   
   res.json({
     success: true,
@@ -767,50 +708,16 @@ app.get('/api/dashboard/stats', authMiddleware, (req, res) => {
       totalDownloads: data.downloads.length,
       userPosts: userPosts.length,
       userMessages: userMessages.length,
-      userDownloads: userDownloads.length,
       userRole: req.user.role,
       joinedAt: user?.createdAt,
-      serverUptime: process.uptime(),
-      version: '10.0.0'
-    }
-  });
-});
-
-app.get('/api/dashboard/analytics', authMiddleware, adminMiddleware, (req, res) => {
-  const last24h = data.analytics.filter(a => new Date(a.timestamp) > new Date(Date.now() - 24 * 60 * 60 * 1000));
-  
-  const byType = {
-    browse: last24h.filter(a => a.type === 'browse').length,
-    search: last24h.filter(a => a.type === 'search').length,
-    download: last24h.filter(a => a.type === 'download').length
-  };
-  
-  const byUser = {};
-  last24h.forEach(a => {
-    if (a.userId) {
-      byUser[a.userId] = (byUser[a.userId] || 0) + 1;
-    }
-  });
-  
-  res.json({
-    success: true,
-    analytics: {
-      total: data.analytics.length,
-      last24h: last24h.length,
-      byType,
-      topUsers: Object.entries(byUser).sort((a,b) => b[1] - a[1]).slice(0, 10),
-      recent: last24h.slice(-20)
+      serverUptime: process.uptime()
     }
   });
 });
 
 // ============ ADMIN ROUTES ============
 app.get('/api/admin/users', authMiddleware, adminMiddleware, (req, res) => {
-  const { limit = 50, page = 1 } = req.query;
-  const start = (page - 1) * limit;
-  const paginated = data.users.slice(start, start + limit);
-  
-  const safeUsers = paginated.map(u => ({
+  const safeUsers = data.users.map(u => ({
     id: u.id,
     username: u.username,
     email: u.email,
@@ -819,56 +726,16 @@ app.get('/api/admin/users', authMiddleware, adminMiddleware, (req, res) => {
     createdAt: u.createdAt
   }));
   
-  res.json({ 
-    success: true, 
-    users: safeUsers, 
-    total: data.users.length,
-    page: parseInt(page),
-    limit: parseInt(limit)
-  });
-});
-
-app.get('/api/admin/users/:id', authMiddleware, adminMiddleware, (req, res) => {
-  const { id } = req.params;
-  const user = data.users.find(u => u.id === id);
-  
-  if (!user) {
-    return res.status(404).json({ error: 'User not found' });
-  }
-  
-  const userPosts = data.posts.filter(p => p.userId === id);
-  const userMessages = data.messages.filter(m => m.userId === id);
-  
-  res.json({
-    success: true,
-    user: {
-      id: user.id,
-      username: user.username,
-      email: user.email,
-      role: user.role,
-      stats: user.stats,
-      createdAt: user.createdAt
-    },
-    posts: userPosts,
-    messages: userMessages
-  });
+  res.json({ success: true, users: safeUsers, total: safeUsers.length });
 });
 
 app.put('/api/admin/users/:userId/role', authMiddleware, adminMiddleware, (req, res) => {
   const { userId } = req.params;
   const { role } = req.body;
   
-  if (!['user', 'admin', 'super_admin'].includes(role)) {
-    return res.status(400).json({ error: 'Invalid role' });
-  }
-  
   const user = data.users.find(u => u.id === userId);
   if (!user) {
     return res.status(404).json({ error: 'User not found' });
-  }
-  
-  if (user.role === 'super_admin' && req.user.role !== 'super_admin') {
-    return res.status(403).json({ error: 'Cannot modify super admin' });
   }
   
   user.role = role;
@@ -889,10 +756,6 @@ app.delete('/api/admin/users/:userId', authMiddleware, adminMiddleware, (req, re
     return res.status(403).json({ error: 'Cannot delete super admin' });
   }
   
-  // Delete user's posts and messages
-  data.posts = data.posts.filter(p => p.userId !== userId);
-  data.messages = data.messages.filter(m => m.userId !== userId);
-  
   data.users.splice(index, 1);
   saveData();
   
@@ -900,25 +763,13 @@ app.delete('/api/admin/users/:userId', authMiddleware, adminMiddleware, (req, re
 });
 
 app.get('/api/admin/stats', authMiddleware, adminMiddleware, (req, res) => {
-  const last7Days = [];
-  for (let i = 6; i >= 0; i--) {
-    const date = new Date();
-    date.setDate(date.getDate() - i);
-    date.setHours(0, 0, 0, 0);
-    const count = data.analytics.filter(a => new Date(a.timestamp) >= date && new Date(a.timestamp) < new Date(date.getTime() + 24*60*60*1000)).length;
-    last7Days.push({ date: date.toISOString().split('T')[0], count });
-  }
-  
   res.json({
     success: true,
     stats: {
       totalUsers: data.users.length,
       totalPosts: data.posts.length,
       totalMessages: data.messages.length,
-      totalDownloads: data.downloads.length,
       totalAnalytics: data.analytics.length,
-      last7Days,
-      userGrowth: data.users.length,
       activeUsers: data.analytics.filter(a => new Date(a.timestamp) > new Date(Date.now() - 24*60*60*1000)).map(a => a.userId).filter((v,i,a) => a.indexOf(v) === i).length
     }
   });
@@ -939,89 +790,43 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// ============ ERROR HANDLER ============
-app.use((err, req, res, next) => {
-  console.error('Error:', err);
-  res.status(500).json({ 
-    error: 'Internal server error', 
-    message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
-  });
-});
-
 // ============ START SERVER ============
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`
-╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
-║                                                                                                                                      ║
-║                         🔥 ZASS ULTIMATE COMPLETE ECOSYSTEM - RUNNING 🔥                                                             ║
-║                                                                                                                                      ║
-║                              THE ALL-IN-ONE PLATFORM - BROWSER, SEARCH, MEDIA, SOCIAL, CHAT                                         ║
-║                                                                                                                                      ║
-╠══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
-║                                                                                                                                      ║
-║  🚀 Server:           http://localhost:${PORT}                                                                                        ║
-║  💚 Health:           http://localhost:${PORT}/health                                                                                ║
-║  🌐 Browser:          http://localhost:${PORT}/browser                                                                               ║
-║  🔍 Search:           http://localhost:${PORT}/api/search/web?q=test                                                                 ║
-║  🎬 Media Download:   http://localhost:${PORT}/media                                                                                 ║
-║  📱 Social Feed:      http://localhost:${PORT}/social                                                                                ║
-║  💬 Chat:             http://localhost:${PORT}/chat                                                                                  ║
-║  📊 Dashboard:        http://localhost:${PORT}/dashboard                                                                             ║
-║  👑 Admin Panel:      http://localhost:${PORT}/admin                                                                                 ║
-║  🤖 AI Chatbot:       POST http://localhost:${PORT}/api/ai/chat                                                                      ║
-║                                                                                                                                      ║
-╠══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
-║                                                                                                                                      ║
-║  ✅ FEATURES ACTIVATED:                                                                                                              ║
-║  ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐ ║
-║  │  🌐 UNLIMITED WEB BROWSER    - Browse any website, no restrictions, no censorship, adult content allowed                        │ ║
-║  │  🔍 MULTI-ENGINE SEARCH      - Google, Bing, DuckDuckGo, YouTube, Twitter, Reddit                                                │ ║
-║  │  📹 VIDEO DOWNLOADER         - Download from YouTube (MP4/MP3), more platforms coming                                            │ ║
-║  │  📱 SOCIAL MEDIA FEED        - Create posts, like, comment, share, follow users                                                  │ ║
-║  │  💬 REAL-TIME CHAT           - Instant messaging, multiple rooms, user mentions                                                  │ ║
-║  │  🤖 AI CHATBOT               - Smart assistant for help, browsing, downloads, search                                             │ ║
-║  │  📁 FILE UPLOAD              - Upload images with automatic optimization and resizing                                            │ ║
-║  │  🔐 AUTHENTICATION           - Login/Register with JWT tokens, session management                                                │ ║
-║  │  👑 ADMIN PANEL              - User management, analytics, system stats, role management                                         │ ║
-║  │  📊 ANALYTICS DASHBOARD      - Track usage, page views, downloads, user activity                                                 │ ║
-║  │  🔖 BOOKMARKS                - Save and manage your favorite websites                                                             │ ║
-║  │  📜 BROWSING HISTORY         - Track and manage browsing history                                                                  │ ║
-║  │  💾 DATA PERSISTENCE         - Automatic backup to JSON file, survives restarts                                                  │ ║
-║  │  🛡️ SECURITY                 - Helmet, CORS, Rate limiting, Session protection                                                   │ ║
-║  │  📱 RESPONSIVE DESIGN        - Works on desktop, tablet, and mobile devices                                                      │ ║
-║  └────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘ ║
-║                                                                                                                                      ║
-╠══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
-║                                                                                                                                      ║
-║  🔐 DEFAULT LOGIN:                                                                                                                   ║
-║     Username: admin                                                                                                                  ║
-║     Password: admin123                                                                                                               ║
-║                                                                                                                                      ║
-║  📊 SYSTEM STATUS:                                                                                                                   ║
-║     • Uptime: ${Math.floor(process.uptime())} seconds                                                                                ║
-║     • Memory: ${Math.floor(process.memoryUsage().rss / 1024 / 1024)} MB                                                              ║
-║     • Users: ${data.users.length}                                                                                                    ║
-║     • Posts: ${data.posts.length}                                                                                                    ║
-║     • Messages: ${data.messages.length}                                                                                              ║
-║     • Downloads: ${data.downloads.length}                                                                                            ║
-║                                                                                                                                      ║
-║  🚀 API ENDPOINTS:                                                                                                                   ║
-║     • GET  /api/browser/browse?url=example.com    - Browse any website                                                              ║
-║     • GET  /api/search/web?q=query               - Search the web                                                                   ║
-║     • GET  /api/media/info?url=...               - Get video information                                                            ║
-║     • GET  /api/media/download?url=...            - Download video                                                                  ║
-║     • GET  /api/social/feed                      - Get social feed                                                                  ║
-║     • POST /api/social/post                      - Create a post                                                                    ║
-║     • GET  /api/chat/messages                    - Get chat messages                                                                ║
-║     • POST /api/chat/send                        - Send chat message                                                                ║
-║     • POST /api/ai/chat                          - AI chatbot                                                                       ║
-║     • POST /api/upload                           - Upload file                                                                      ║
-║     • GET  /api/dashboard/stats                  - Get user stats                                                                   ║
-║     • GET  /api/admin/users                      - Admin user list                                                                  ║
-║                                                                                                                                      ║
-║                              🔥 THE ULTIMATE PLATFORM IS READY! 🔥                                                                   ║
-║                                                                                                                                      ║
-╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                                                                                                  ║
+║                         🔥 ZASS ULTIMATE ECOSYSTEM - RUNNING ON HEROKU 🔥                                        ║
+║                                                                                                                  ║
+║                                    THE COMPLETE PLATFORM - EVERYTHING UNLIMITED                                  ║
+║                                                                                                                  ║
+╠══════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║                                                                                                                  ║
+║  🚀 Server:      http://localhost:${PORT}                                                                         ║
+║  💚 Health:      http://localhost:${PORT}/health                                                                 ║
+║  🌐 Browser:     http://localhost:${PORT}/browser                                                                ║
+║  🔍 Search:      http://localhost:${PORT}/api/search/web?q=test                                                  ║
+║  🎬 Media:       http://localhost:${PORT}/media                                                                  ║
+║  📱 Social:      http://localhost:${PORT}/social                                                                 ║
+║  💬 Chat:        http://localhost:${PORT}/chat                                                                   ║
+║  📊 Dashboard:   http://localhost:${PORT}/dashboard                                                              ║
+║  👑 Admin:       http://localhost:${PORT}/admin                                                                  ║
+║  🤖 AI Chat:     http://localhost:${PORT}/api/ai/chat (POST)                                                     ║
+║                                                                                                                  ║
+╠══════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║                                                                                                                  ║
+║  🔐 DEFAULT LOGIN:                                                                                               ║
+║     Username: admin                                                                                              ║
+║     Password: admin123                                                                                           ║
+║                                                                                                                  ║
+║  📊 SYSTEM STATUS:                                                                                               ║
+║     • Uptime: ${Math.floor(process.uptime())} seconds                                                              ║
+║     • Users: ${data.users.length}                                                                                ║
+║     • Posts: ${data.posts.length}                                                                                ║
+║     • Messages: ${data.messages.length}                                                                          ║
+║                                                                                                                  ║
+║                              🔥 THE ULTIMATE PLATFORM IS READY! 🔥                                               ║
+║                                                                                                                  ║
+╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
   `);
 });
 
