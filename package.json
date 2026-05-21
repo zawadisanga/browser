@@ -10,8 +10,7 @@
   "scripts": {
     "start": "node server.js",
     "postinstall": "echo 'Build completed!'"
-  }
-}
+  },
   "dependencies": {
     "express": "^4.18.2",
     "axios": "^1.6.2",
@@ -31,4 +30,3 @@
     "ytdl-core": "^4.11.5"
   }
 }
-
