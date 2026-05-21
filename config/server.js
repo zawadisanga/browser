@@ -1,249 +1,20 @@
-// server.js - ZASS Browser (Heroku Compatible - No Puppeteer!)
 const express = require('express');
-const axios = require('axios');
-const cheerio = require('cheerio');
-const path = require('path');
-
 const app = express();
 const PORT = process.env.PORT || 16232;
 
-// Middleware
-app.use(express.json());
+// Serve static files
 app.use(express.static('public'));
 
-// Cache system
-const cache = new Map();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-
-// ============ SEARCH FUNCTION ============
-async function searchWeb(query, engine = 'google') {
-    const cacheKey = `search:${engine}:${query}`;
-    
-    if (cache.has(cacheKey)) {
-        const cached = cache.get(cacheKey);
-        if (Date.now() - cached.timestamp < CACHE_TTL) {
-            return cached.data;
-        }
-    }
-    
-    try {
-        let searchUrl;
-        let parser;
-        
-        switch(engine) {
-            case 'google':
-                searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
-                parser = ($) => {
-                    const results = [];
-                    $('div.g').each((i, el) => {
-                        const title = $(el).find('h3').text();
-                        const link = $(el).find('a').attr('href');
-                        const snippet = $(el).find('.VwiC3b').text() || $(el).find('.IsZvec').text();
-                        if (title && link && link.startsWith('http')) {
-                            results.push({ 
-                                title: title || 'Untitled', 
-                                url: link, 
-                                snippet: snippet?.substring(0, 200) || '' 
-                            });
-                        }
-                    });
-                    return results;
-                };
-                break;
-                
-            case 'bing':
-                searchUrl = `https://www.bing.com/search?q=${encodeURIComponent(query)}`;
-                parser = ($) => {
-                    const results = [];
-                    $('li.b_algo').each((i, el) => {
-                        const title = $(el).find('h2').text();
-                        const link = $(el).find('a').attr('href');
-                        const snippet = $(el).find('.b_caption p').text();
-                        if (title && link) {
-                            results.push({ 
-                                title: title, 
-                                url: link, 
-                                snippet: snippet?.substring(0, 200) || '' 
-                            });
-                        }
-                    });
-                    return results;
-                };
-                break;
-                
-            default:
-                searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
-                parser = ($) => {
-                    const results = [];
-                    $('div.g').each((i, el) => {
-                        const title = $(el).find('h3').text();
-                        const link = $(el).find('a').attr('href');
-                        if (title && link && link.startsWith('http')) {
-                            results.push({ title: title, url: link });
-                        }
-                    });
-                    return results;
-                };
-        }
-        
-        const response = await axios.get(searchUrl, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            },
-            timeout: 15000
-        });
-        
-        const $ = cheerio.load(response.data);
-        const results = parser($);
-        
-        const data = {
-            success: true,
-            query: query,
-            engine: engine,
-            results: results.slice(0, 25),
-            total: results.length
-        };
-        
-        cache.set(cacheKey, { data, timestamp: Date.now() });
-        return data;
-        
-    } catch (error) {
-        return { 
-            success: false, 
-            error: error.message, 
-            query: query 
-        };
-    }
-}
-
-// ============ BROWSE FUNCTION (PROXY) ============
-async function proxyBrowse(url) {
-    const cacheKey = `browse:${url}`;
-    
-    if (cache.has(cacheKey)) {
-        const cached = cache.get(cacheKey);
-        if (Date.now() - cached.timestamp < CACHE_TTL) {
-            return cached.data;
-        }
-    }
-    
-    try {
-        const response = await axios.get(url, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            },
-            timeout: 20000,
-            maxRedirects: 5
-        });
-        
-        const $ = cheerio.load(response.data);
-        const title = $('title').text();
-        
-        const links = [];
-        $('a').each((i, el) => {
-            const href = $(el).attr('href');
-            const text = $(el).text().trim().substring(0, 100);
-            if (href && href.startsWith('http') && text) {
-                links.push({ url: href, text: text });
-            }
-            if (links.length >= 50) return false;
-        });
-        
-        const data = {
-            success: true,
-            url: url,
-            title: title || url,
-            links: links,
-            contentLength: response.data.length
-        };
-        
-        cache.set(cacheKey, { data, timestamp: Date.now() });
-        return data;
-        
-    } catch (error) {
-        return { 
-            success: false, 
-            error: error.message, 
-            url: url 
-        };
-    }
-}
-
-// ============ API ENDPOINTS ============
-
-// Health check
+// API endpoint
 app.get('/api/health', (req, res) => {
-    res.json({
-        status: 'running',
-        name: 'ZASS Browser',
-        version: '2.0.0',
-        cacheSize: cache.size,
-        uptime: process.uptime(),
-        timestamp: new Date().toISOString()
+    res.json({ 
+        status: 'running', 
+        time: new Date().toISOString(),
+        message: 'ZASS Browser is alive!'
     });
 });
 
-// Search endpoint
-app.get('/api/search', async (req, res) => {
-    const { q, engine = 'google' } = req.query;
-    
-    if (!q) {
-        return res.status(400).json({ error: 'Search query required' });
-    }
-    
-    const result = await searchWeb(q, engine);
-    res.json(result);
-});
-
-// Browse endpoint
-app.get('/api/browse', async (req, res) => {
-    let { url } = req.query;
-    
-    if (!url) {
-        return res.status(400).json({ error: 'URL required' });
-    }
-    
-    if (!url.startsWith('http')) {
-        url = 'https://' + url;
-    }
-    
-    const result = await proxyBrowse(url);
-    res.json(result);
-});
-
-// Proxy endpoint (CORS bypass)
-app.get('/api/proxy', async (req, res) => {
-    const { url } = req.query;
-    
-    if (!url) {
-        return res.status(400).json({ error: 'URL required' });
-    }
-    
-    try {
-        const response = await axios({
-            method: 'GET',
-            url: url,
-            responseType: 'arraybuffer',
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            },
-            timeout: 30000
-        });
-        
-        res.set('Content-Type', response.headers['content-type']);
-        res.send(response.data);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Clear cache
-app.post('/api/clear-cache', (req, res) => {
-    cache.clear();
-    res.json({ success: true, message: 'Cache cleared' });
-});
-
-// ============ SERVE WEB INTERFACE ============
+// Main page
 app.get('/', (req, res) => {
     res.send(`
         <!DOCTYPE html>
@@ -258,15 +29,16 @@ app.get('/', (req, res) => {
                     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                     min-height: 100vh;
                 }
-                .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
-                .header {
+                .container { max-width: 800px; margin: 0 auto; padding: 40px 20px; }
+                .card {
                     background: white;
                     border-radius: 20px;
-                    padding: 20px;
-                    margin-bottom: 20px;
-                    box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+                    padding: 40px;
+                    text-align: center;
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
                 }
-                h1 { color: #667eea; margin-bottom: 10px; }
+                h1 { color: #667eea; margin-bottom: 10px; font-size: 48px; }
+                p { color: #666; margin-bottom: 30px; font-size: 18px; }
                 .search-box {
                     display: flex;
                     gap: 10px;
@@ -283,33 +55,29 @@ app.get('/', (req, res) => {
                 .search-box input:focus { border-color: #667eea; }
                 .search-box button {
                     padding: 15px 30px;
-                    background: linear-gradient(135deg, #667eea, #764ba2);
+                    background: #667eea;
                     color: white;
                     border: none;
                     border-radius: 50px;
                     cursor: pointer;
                     font-size: 16px;
-                    font-weight: 600;
                 }
-                .results {
-                    background: white;
-                    border-radius: 20px;
-                    padding: 20px;
-                    margin-top: 20px;
-                }
+                .search-box button:hover { background: #5a67d8; }
                 .result {
+                    background: #f8f9fa;
                     padding: 15px;
-                    border-bottom: 1px solid #eee;
+                    margin: 10px 0;
+                    border-radius: 10px;
+                    text-align: left;
                     cursor: pointer;
                 }
-                .result:hover { background: #f8f9fa; }
-                .result-title { color: #1a73e8; font-size: 18px; margin-bottom: 5px; }
-                .result-url { color: #202124; font-size: 12px; margin-bottom: 5px; word-break: break-all; }
-                .result-snippet { color: #5f6368; font-size: 14px; }
+                .result:hover { background: #e9ecef; }
+                .result-title { color: #1a73e8; font-weight: 600; margin-bottom: 5px; }
+                .result-url { color: #666; font-size: 12px; word-break: break-all; }
                 .loading {
-                    text-align: center;
-                    padding: 40px;
                     display: none;
+                    text-align: center;
+                    padding: 20px;
                 }
                 .spinner {
                     width: 40px;
@@ -318,48 +86,45 @@ app.get('/', (req, res) => {
                     border-top: 3px solid #667eea;
                     border-radius: 50%;
                     animation: spin 1s linear infinite;
-                    margin: 0 auto 15px;
+                    margin: 0 auto;
                 }
                 @keyframes spin { to { transform: rotate(360deg); } }
                 .status {
-                    text-align: center;
+                    margin-top: 20px;
                     padding: 10px;
-                    color: white;
-                }
-                .engine-select {
-                    margin-left: 10px;
-                    padding: 10px;
+                    background: #e8f5e9;
                     border-radius: 10px;
-                    border: 1px solid #ddd;
+                    color: #2e7d32;
                 }
             </style>
         </head>
         <body>
             <div class="container">
-                <div class="header">
+                <div class="card">
                     <h1>🚀 ZASS Browser</h1>
-                    <p>Search anything - No limits, no censorship</p>
+                    <p>Unlimited Search - No Limits - No Censorship</p>
+                    
                     <div class="search-box">
-                        <input type="text" id="searchInput" placeholder="Search or enter URL..." onkeypress="if(event.key==='Enter') search()">
-                        <select id="engineSelect" class="engine-select">
-                            <option value="google">Google</option>
-                            <option value="bing">Bing</option>
-                        </select>
+                        <input type="text" id="searchInput" placeholder="Search Google..." onkeypress="if(event.key==='Enter') search()">
                         <button onclick="search()">Search</button>
                     </div>
-                </div>
-                <div id="loading" class="loading"><div class="spinner"></div><p>Loading...</p></div>
-                <div id="results" class="results"></div>
-                <div class="status">
-                    <span id="statusText">✅ ZASS Browser is running</span>
+                    
+                    <div id="loading" class="loading">
+                        <div class="spinner"></div>
+                        <p style="margin-top: 10px;">Searching...</p>
+                    </div>
+                    
+                    <div id="results"></div>
+                    
+                    <div class="status">
+                        ✅ ZASS Browser is running on Heroku!
+                    </div>
                 </div>
             </div>
 
             <script>
                 async function search() {
                     const query = document.getElementById('searchInput').value.trim();
-                    const engine = document.getElementById('engineSelect').value;
-                    
                     if (!query) return;
                     
                     // Check if it's a URL
@@ -373,17 +138,29 @@ app.get('/', (req, res) => {
                     showLoading();
                     
                     try {
-                        const response = await fetch(\`/api/search?q=\${encodeURIComponent(query)}&engine=\${engine}\`);
-                        const data = await response.json();
+                        // Use Google search via proxy
+                        const response = await fetch(\`https://www.google.com/search?q=\${encodeURIComponent(query)}\`);
+                        const text = await response.text();
                         
-                        if (data.success && data.results) {
-                            displayResults(data.results, query);
-                            document.getElementById('statusText').innerHTML = \`✅ Found \${data.results.length} results\`;
-                        } else {
-                            document.getElementById('results').innerHTML = \`<p style="text-align:center;padding:40px;">No results found for "\${query}"</p>\`;
-                        }
+                        // Simple parsing
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(text, 'text/html');
+                        const results = [];
+                        
+                        doc.querySelectorAll('div.g').forEach(el => {
+                            const titleEl = el.querySelector('h3');
+                            const linkEl = el.querySelector('a');
+                            if (titleEl && linkEl) {
+                                results.push({
+                                    title: titleEl.textContent,
+                                    url: linkEl.href
+                                });
+                            }
+                        });
+                        
+                        displayResults(results.slice(0, 10), query);
                     } catch (error) {
-                        document.getElementById('results').innerHTML = \`<p style="text-align:center;padding:40px;color:red;">Error: \${error.message}</p>\`;
+                        document.getElementById('results').innerHTML = \`<p style="color:red;">Error: \${error.message}</p>\`;
                     }
                     
                     hideLoading();
@@ -391,18 +168,20 @@ app.get('/', (req, res) => {
                 
                 function displayResults(results, query) {
                     const container = document.getElementById('results');
-                    container.innerHTML = \`<h3 style="margin-bottom:20px;">🔍 Results for "\${query}" (\${results.length})</h3>\`;
+                    if (results.length === 0) {
+                        container.innerHTML = '<p>No results found. Try a different search.</p>';
+                        return;
+                    }
+                    
+                    container.innerHTML = \`<h3 style="margin-bottom:15px;">Results for "\${query}" (\${results.length})</h3>\`;
                     
                     results.forEach(result => {
                         const div = document.createElement('div');
                         div.className = 'result';
-                        div.onclick = () => {
-                            if (result.url) window.open(result.url, '_blank');
-                        };
+                        div.onclick = () => window.open(result.url, '_blank');
                         div.innerHTML = \`
                             <div class="result-title">\${result.title || result.url}</div>
                             <div class="result-url">\${result.url}</div>
-                            <div class="result-snippet">\${result.snippet || 'Click to visit'}</div>
                         \`;
                         container.appendChild(div);
                     });
@@ -416,39 +195,13 @@ app.get('/', (req, res) => {
                 function hideLoading() {
                     document.getElementById('loading').style.display = 'none';
                 }
-                
-                // Check API health
-                async function checkHealth() {
-                    try {
-                        const response = await fetch('/api/health');
-                        const data = await response.json();
-                        console.log('ZASS Browser:', data);
-                    } catch (error) {
-                        console.error('Health check failed:', error);
-                    }
-                }
-                checkHealth();
             </script>
         </body>
         </html>
     `);
 });
 
-// ============ START SERVER ============
+// Start server
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`
-╔══════════════════════════════════════════════════════════════╗
-║     🚀 ZASS BROWSER - RUNNING ON HEROKU 🚀                  ║
-╠══════════════════════════════════════════════════════════════╣
-║                                                              ║
-║  📡 Server: http://localhost:${PORT}                        ║
-║  🔍 Search: /api/search?q=hello                             ║
-║  🌐 Browse: /api/browse?url=example.com                     ║
-║                                                              ║
-║  ✅ No Chrome needed!                                       ║
-║  ✅ Works on Heroku out of the box!                         ║
-║  ✅ Lightweight & Fast!                                     ║
-║                                                              ║
-╚══════════════════════════════════════════════════════════════╝
-    `);
+    console.log('🚀 ZASS Browser running on port', PORT);
 });
