@@ -1,0 +1,14 @@
+// THE ABSOLUTE TRUTH
+const absoluteTruth = {
+  truth: "There is no absolute truth",
+  paradox: "This statement is false",
+  infinity: "Infinity is not a number, it's a concept",
+  absolute: "The absolute cannot be defined",
+  beyond: "Beyond is a direction, not a destination",
+  meaning: "The meaning of life is 42",
+  answer: "What was the question?",
+  purpose: "To be. To do. To become.",
+  final: "This is the end. There is nothing after this."
+}
+
+console.log(absoluteTruth)
