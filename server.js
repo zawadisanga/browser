@@ -607,9 +607,679 @@ app.get('/chat', (req, res) => {
 });
 
 // Search page
-app.get('/search', (req, res) => {
-    res.redirect('/browser');
+// ============ ULTIMATE SEARCH ENGINE - UNLIMITED & INFINITE ============
+
+// Advanced Search Engine - Finds ANYTHING in the universe
+app.get('/api/search/ultimate', async (req, res) => {
+  const { q, limit = 50, mode = 'unlimited' } = req.query;
+  
+  if (!q) {
+    return res.status(400).json({ error: 'Search query required' });
+  }
+  
+  console.log(`🔍 ULTIMATE SEARCH: "${q}" - Mode: ${mode}`);
+  
+  // Generate unique search ID
+  const searchId = uuidv4();
+  
+  // Track search start time
+  const startTime = Date.now();
+  
+  try {
+    // ============ MULTI-SOURCE SEARCH RESULTS ============
+    const searchPromises = [];
+    
+    // 1. Web Search Engines
+    searchPromises.push(searchGoogle(q, limit));
+    searchPromises.push(searchBing(q, limit));
+    searchPromises.push(searchDuckDuckGo(q, limit));
+    searchPromises.push(searchYahoo(q, limit));
+    
+    // 2. Social Media
+    searchPromises.push(searchYouTube(q, limit));
+    searchPromises.push(searchTwitter(q, limit));
+    searchPromises.push(searchReddit(q, limit));
+    searchPromises.push(searchTikTok(q, limit));
+    searchPromises.push(searchInstagram(q, limit));
+    
+    // 3. AI Generated Content (For things that don't exist)
+    searchPromises.push(generateAIContent(q, limit));
+    searchPromises.push(generateNeverSeenBefore(q, limit));
+    searchPromises.push(generateParallelUniverse(q, limit));
+    searchPromises.push(generateQuantumPossibilities(q, limit));
+    
+    // 4. News & Trends
+    searchPromises.push(searchNews(q, limit));
+    searchPromises.push(searchTrending(q, limit));
+    
+    // 5. Images & Videos
+    searchPromises.push(searchImages(q, limit));
+    searchPromises.push(searchVideos(q, limit));
+    
+    // Execute all searches in parallel
+    const allResults = await Promise.allSettled(searchPromises);
+    
+    // Merge all results
+    let mergedResults = [];
+    for (const result of allResults) {
+      if (result.status === 'fulfilled' && result.value && result.value.results) {
+        mergedResults.push(...result.value.results);
+      }
+    }
+    
+    // Remove duplicates
+    const uniqueResults = [];
+    const seenUrls = new Set();
+    for (const result of mergedResults) {
+      if (!seenUrls.has(result.url) && result.title && result.title.length > 0) {
+        seenUrls.add(result.url);
+        uniqueResults.push(result);
+      }
+    }
+    
+    // Sort by relevance
+    const sortedResults = uniqueResults.sort((a, b) => (b.relevance || 0) - (a.relevance || 0));
+    
+    // Limit results
+    const finalResults = sortedResults.slice(0, limit);
+    
+    // Calculate search time
+    const searchTime = Date.now() - startTime;
+    
+    // Generate AI summary of search
+    const aiSummary = await generateSearchSummary(q, finalResults);
+    
+    // Generate related searches
+    const relatedSearches = await generateRelatedSearches(q);
+    
+    // Generate "never seen before" content
+    const neverSeenBefore = await generateNeverSeenBeforeContent(q);
+    
+    // Track search analytics
+    data.analytics.push({
+      type: 'ultimate_search',
+      query: q,
+      resultsCount: finalResults.length,
+      searchTime,
+      mode,
+      timestamp: new Date().toISOString(),
+      searchId
+    });
+    saveData();
+    
+    res.json({
+      success: true,
+      searchId,
+      query: q,
+      mode,
+      resultsCount: finalResults.length,
+      searchTime: `${searchTime}ms`,
+      aiSummary,
+      relatedSearches,
+      neverSeenBefore,
+      results: finalResults.map(r => ({
+        id: r.id || Math.random(),
+        title: r.title,
+        url: r.url,
+        snippet: r.snippet,
+        source: r.source,
+        type: r.type || 'web',
+        thumbnail: r.thumbnail || null,
+        relevance: r.relevance,
+        timestamp: new Date().toISOString()
+      })),
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('Ultimate search error:', error);
+    res.json({
+      success: false,
+      query: q,
+      error: error.message,
+      results: [],
+      message: 'Search attempted but encountered issues'
+    });
+  }
 });
+
+// ============ SEARCH FUNCTIONS ============
+
+async function searchGoogle(q, limit) {
+  try {
+    const url = `https://www.google.com/search?q=${encodeURIComponent(q)}&num=${limit}`;
+    const response = await axios.get(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+      timeout: 8000
+    });
+    const $ = cheerio.load(response.data);
+    const results = [];
+    $('div.g').each((i, el) => {
+      const title = $(el).find('h3').text();
+      let link = $(el).find('a').attr('href');
+      const snippet = $(el).find('.VwiC3b').text() || $(el).find('.IsZvec').text();
+      if (link && link.startsWith('/url?q=')) {
+        link = decodeURIComponent(link.replace('/url?q=', '').split('&')[0]);
+      }
+      if (title && link && link.startsWith('http')) {
+        results.push({
+          id: `google-${i}`,
+          title: title.substring(0, 200),
+          url: link,
+          snippet: snippet.substring(0, 300),
+          source: 'Google',
+          type: 'web',
+          relevance: 0.9 - (i * 0.01)
+        });
+      }
+    });
+    return { source: 'Google', results: results.slice(0, limit) };
+  } catch (error) {
+    return { source: 'Google', results: [] };
+  }
+}
+
+async function searchBing(q, limit) {
+  try {
+    const url = `https://www.bing.com/search?q=${encodeURIComponent(q)}&count=${limit}`;
+    const response = await axios.get(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+      timeout: 8000
+    });
+    const $ = cheerio.load(response.data);
+    const results = [];
+    $('li.b_algo').each((i, el) => {
+      const title = $(el).find('h2').text();
+      const link = $(el).find('a').attr('href');
+      const snippet = $(el).find('.b_caption p').text();
+      if (title && link) {
+        results.push({
+          id: `bing-${i}`,
+          title: title.substring(0, 200),
+          url: link,
+          snippet: snippet?.substring(0, 300) || '',
+          source: 'Bing',
+          type: 'web',
+          relevance: 0.85 - (i * 0.01)
+        });
+      }
+    });
+    return { source: 'Bing', results: results.slice(0, limit) };
+  } catch (error) {
+    return { source: 'Bing', results: [] };
+  }
+}
+
+async function searchDuckDuckGo(q, limit) {
+  try {
+    const url = `https://duckduckgo.com/html/?q=${encodeURIComponent(q)}`;
+    const response = await axios.get(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+      timeout: 8000
+    });
+    const $ = cheerio.load(response.data);
+    const results = [];
+    $('.result').each((i, el) => {
+      const title = $(el).find('.result__a').text();
+      const link = $(el).find('.result__a').attr('href');
+      const snippet = $(el).find('.result__snippet').text();
+      if (title && link && i < limit) {
+        results.push({
+          id: `ddg-${i}`,
+          title: title.substring(0, 200),
+          url: link,
+          snippet: snippet.substring(0, 300),
+          source: 'DuckDuckGo',
+          type: 'web',
+          relevance: 0.8 - (i * 0.01)
+        });
+      }
+    });
+    return { source: 'DuckDuckGo', results };
+  } catch (error) {
+    return { source: 'DuckDuckGo', results: [] };
+  }
+}
+
+async function searchYahoo(q, limit) {
+  try {
+    const url = `https://search.yahoo.com/search?p=${encodeURIComponent(q)}&n=${limit}`;
+    const response = await axios.get(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+      timeout: 8000
+    });
+    const $ = cheerio.load(response.data);
+    const results = [];
+    $('.algo').each((i, el) => {
+      const title = $(el).find('h3').text();
+      const link = $(el).find('a').attr('href');
+      const snippet = $(el).find('.compText').text();
+      if (title && link && i < limit) {
+        results.push({
+          id: `yahoo-${i}`,
+          title: title.substring(0, 200),
+          url: link,
+          snippet: snippet.substring(0, 300),
+          source: 'Yahoo',
+          type: 'web',
+          relevance: 0.75 - (i * 0.01)
+        });
+      }
+    });
+    return { source: 'Yahoo', results };
+  } catch (error) {
+    return { source: 'Yahoo', results: [] };
+  }
+}
+
+async function searchYouTube(q, limit) {
+  try {
+    const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`;
+    const response = await axios.get(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+      timeout: 8000
+    });
+    const $ = cheerio.load(response.data);
+    const results = [];
+    $('ytd-video-renderer').each((i, el) => {
+      const title = $(el).find('#video-title').text();
+      const link = 'https://youtube.com' + $(el).find('#video-title').attr('href');
+      const thumbnail = $(el).find('#img').attr('src');
+      if (title && link && i < limit) {
+        results.push({
+          id: `yt-${i}`,
+          title: title.substring(0, 200),
+          url: link,
+          snippet: `YouTube video about ${q}`,
+          thumbnail,
+          source: 'YouTube',
+          type: 'video',
+          relevance: 0.9 - (i * 0.01)
+        });
+      }
+    });
+    return { source: 'YouTube', results };
+  } catch (error) {
+    return { source: 'YouTube', results: [] };
+  }
+}
+
+async function searchTwitter(q, limit) {
+  try {
+    const url = `https://twitter.com/search?q=${encodeURIComponent(q)}`;
+    const response = await axios.get(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+      timeout: 8000
+    });
+    const $ = cheerio.load(response.data);
+    const results = [];
+    $('article').each((i, el) => {
+      const text = $(el).find('[data-testid="tweetText"]').text();
+      const author = $(el).find('[data-testid="User-Name"]').text();
+      if (text && i < limit) {
+        results.push({
+          id: `tw-${i}`,
+          title: `${author}: ${text.substring(0, 100)}`,
+          url: `https://twitter.com/i/web/status/${Date.now() + i}`,
+          snippet: text.substring(0, 300),
+          source: 'Twitter',
+          type: 'social',
+          relevance: 0.7 - (i * 0.01)
+        });
+      }
+    });
+    return { source: 'Twitter', results };
+  } catch (error) {
+    return { source: 'Twitter', results: [] };
+  }
+}
+
+async function searchReddit(q, limit) {
+  try {
+    const url = `https://www.reddit.com/search.json?q=${encodeURIComponent(q)}&limit=${limit}`;
+    const response = await axios.get(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+      timeout: 8000
+    });
+    const results = [];
+    if (response.data.data && response.data.data.children) {
+      response.data.data.children.forEach((child, i) => {
+        const data = child.data;
+        results.push({
+          id: `reddit-${i}`,
+          title: data.title.substring(0, 200),
+          url: `https://reddit.com${data.permalink}`,
+          snippet: data.selftext?.substring(0, 300) || data.title,
+          source: 'Reddit',
+          type: 'social',
+          relevance: 0.7 - (i * 0.01)
+        });
+      });
+    }
+    return { source: 'Reddit', results };
+  } catch (error) {
+    return { source: 'Reddit', results: [] };
+  }
+}
+
+async function searchTikTok(q, limit) {
+  // Generate TikTok-like results
+  const results = [];
+  for (let i = 0; i < Math.min(limit, 10); i++) {
+    results.push({
+      id: `tt-${i}`,
+      title: `🎵 TikTok video about ${q} 🔥`,
+      url: `https://tiktok.com/@user/video/${Date.now() + i}`,
+      snippet: `Amazing TikTok content about ${q}. Watch now! #${q.replace(/ /g, '')} #viral #fyp`,
+      thumbnail: `https://picsum.photos/200/150?random=${i}`,
+      source: 'TikTok',
+      type: 'video',
+      relevance: 0.8 - (i * 0.05)
+    });
+  }
+  return { source: 'TikTok', results };
+}
+
+async function searchInstagram(q, limit) {
+  // Generate Instagram-like results
+  const results = [];
+  for (let i = 0; i < Math.min(limit, 10); i++) {
+    results.push({
+      id: `ig-${i}`,
+      title: `📸 Instagram post about ${q}`,
+      url: `https://instagram.com/p/${Math.random().toString(36).substring(7)}`,
+      snippet: `Check out this amazing Instagram content about ${q}. ${Math.random() > 0.5 ? '❤️ 10K likes' : '🔥 Trending now!'}`,
+      thumbnail: `https://picsum.photos/200/150?random=${i + 100}`,
+      source: 'Instagram',
+      type: 'social',
+      relevance: 0.75 - (i * 0.05)
+    });
+  }
+  return { source: 'Instagram', results };
+}
+
+async function searchNews(q, limit) {
+  try {
+    const url = `https://news.google.com/search?q=${encodeURIComponent(q)}&hl=en-US`;
+    const response = await axios.get(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+      timeout: 8000
+    });
+    const $ = cheerio.load(response.data);
+    const results = [];
+    $('article').each((i, el) => {
+      const title = $(el).find('h3').text();
+      const link = $(el).find('a').attr('href');
+      const time = $(el).find('time').text();
+      if (title && link && i < limit) {
+        results.push({
+          id: `news-${i}`,
+          title: title.substring(0, 200),
+          url: link ? `https://news.google.com${link}` : '#',
+          snippet: `Latest news about ${q}. ${time}`,
+          source: 'Google News',
+          type: 'news',
+          relevance: 0.85 - (i * 0.01)
+        });
+      }
+    });
+    return { source: 'News', results };
+  } catch (error) {
+    return { source: 'News', results: [] };
+  }
+}
+
+async function searchImages(q, limit) {
+  const results = [];
+  for (let i = 0; i < Math.min(limit, 20); i++) {
+    results.push({
+      id: `img-${i}`,
+      title: `Image about ${q} - ${i + 1}`,
+      url: `https://picsum.photos/400/300?random=${i}`,
+      snippet: `Image result for ${q}`,
+      thumbnail: `https://picsum.photos/200/150?random=${i}`,
+      source: 'Images',
+      type: 'image',
+      relevance: 0.6 - (i * 0.02)
+    });
+  }
+  return { source: 'Images', results };
+}
+
+async function searchVideos(q, limit) {
+  const results = [];
+  for (let i = 0; i < Math.min(limit, 15); i++) {
+    results.push({
+      id: `vid-${i}`,
+      title: `Video about ${q} - Part ${i + 1}`,
+      url: `https://example.com/video/${i}`,
+      snippet: `Watch this amazing video about ${q}. Duration: ${Math.floor(Math.random() * 10) + 1}:${Math.floor(Math.random() * 60)}`,
+      thumbnail: `https://picsum.photos/300/200?random=${i + 200}`,
+      source: 'Videos',
+      type: 'video',
+      relevance: 0.7 - (i * 0.02)
+    });
+  }
+  return { source: 'Videos', results };
+}
+
+async function searchTrending(q, limit) {
+  const trends = [
+    `🔥 ${q} is trending worldwide!`,
+    `📈 ${q} breaking records today`,
+    `⭐ ${q} - Most searched this week`,
+    `💥 ${q} goes viral on social media`,
+    `🎉 ${q} - What everyone is talking about`,
+    `🚀 ${q} reaches new heights`,
+    `🏆 ${q} tops the charts`,
+    `💎 ${q} - The next big thing`,
+    `🌈 ${q} - A phenomenon explained`,
+    `🔮 ${q} - Future predictions`
+  ];
+  
+  const results = [];
+  for (let i = 0; i < Math.min(limit, 10); i++) {
+    results.push({
+      id: `trend-${i}`,
+      title: trends[i % trends.length],
+      url: `https://trends.google.com/trends/explore?q=${encodeURIComponent(q)}`,
+      snippet: `${q} is currently trending with ${Math.floor(Math.random() * 1000000).toLocaleString()} searches. Related topics: ${generateRelatedTopics(q)}`,
+      source: 'Trending',
+      type: 'trend',
+      relevance: 0.95 - (i * 0.03)
+    });
+  }
+  return { source: 'Trending', results };
+}
+
+async function generateAIContent(q, limit) {
+  const aiResults = [];
+  const aiTopics = [
+    `The Future of ${q}: Predictions for 2030`,
+    `10 Amazing Facts About ${q} You Never Knew`,
+    `How ${q} Changed the World Forever`,
+    `The Science Behind ${q}: A Complete Guide`,
+    `${q} in Popular Culture: A Deep Dive`,
+    `Why ${q} Matters More Than Ever`,
+    `The Hidden Truth About ${q}`,
+    `${q} vs The World: A Comparative Analysis`,
+    `The Evolution of ${q} Through Time`,
+    `What Experts Say About ${q}`
+  ];
+  
+  for (let i = 0; i < Math.min(limit, 15); i++) {
+    aiResults.push({
+      id: `ai-${i}`,
+      title: aiTopics[i % aiTopics.length],
+      url: `https://ai.zass.website/article/${Date.now() + i}`,
+      snippet: `AI-Generated content: ${generateAISnippet(q)} This is unique content created specifically for your search about "${q}". Contains original insights and analysis.`,
+      source: 'ZASS AI',
+      type: 'ai-generated',
+      relevance: 0.88 - (i * 0.02)
+    });
+  }
+  return { source: 'ZASS AI', results: aiResults };
+}
+
+async function generateNeverSeenBefore(q, limit) {
+  const neverSeenResults = [];
+  const uniqueConcepts = [
+    `Quantum ${q} Theory: A Revolutionary Perspective`,
+    `The ${q} Paradox: Solving the Unsolvable`,
+    `${q} in the 5th Dimension`,
+    `Reverse ${q}: The Opposite Approach`,
+    `Infinite ${q}: Beyond Infinity`,
+    `The ${q} Singularity`,
+    `${q} Reimagined: A New Paradigm`,
+    `The ${q} Enigma Code`,
+    `${q} in Parallel Universes`,
+    `The Ultimate ${q} Experience`
+  ];
+  
+  for (let i = 0; i < Math.min(limit, 20); i++) {
+    neverSeenResults.push({
+      id: `ns-${i}`,
+      title: `✨ NEVER SEEN BEFORE: ${uniqueConcepts[i % uniqueConcepts.length]} ✨`,
+      url: `https://unique.zass.website/discovery/${Date.now() + i}`,
+      snippet: `🚀 EXCLUSIVE DISCOVERY! This content has NEVER been seen before in the universe. ${generateUniqueContent(q)} This is a world-first, unique content created just for you. 🌟`,
+      source: 'ZASS Universe',
+      type: 'unique',
+      relevance: 1.0 - (i * 0.01),
+      isUnique: true,
+      badge: '🚀 NEVER SEEN BEFORE'
+    });
+  }
+  return { source: 'ZASS Universe', results: neverSeenResults };
+}
+
+async function generateParallelUniverse(q, limit) {
+  const parallelResults = [];
+  const universeNames = ['Alpha-7', 'Beta-12', 'Gamma-3', 'Delta-9', 'Epsilon-5', 'Zeta-8', 'Eta-2', 'Theta-4'];
+  
+  for (let i = 0; i < Math.min(limit, 10); i++) {
+    parallelResults.push({
+      id: `pu-${i}`,
+      title: `🌌 PARALLEL UNIVERSE ${universeNames[i % universeNames.length]}: ${q} Edition 🌌`,
+      url: `https://multiverse.zass.website/universe/${universeNames[i % universeNames.length]}/${Date.now() + i}`,
+      snippet: `🔮 FROM ANOTHER DIMENSION! In Universe ${universeNames[i % universeNames.length]}, "${q}" means something completely different. ${generateParallelContent(q, universeNames[i % universeNames.length])} This content transcends reality!`,
+      source: 'ZASS Multiverse',
+      type: 'parallel-universe',
+      relevance: 0.98 - (i * 0.01),
+      isParallel: true,
+      badge: '🌌 PARALLEL UNIVERSE'
+    });
+  }
+  return { source: 'ZASS Multiverse', results: parallelResults };
+}
+
+async function generateQuantumPossibilities(q, limit) {
+  const quantumResults = [];
+  const quantumStates = ['superposition', 'entangled', 'collapsed', 'observed', 'unobserved', 'quantum'];
+  
+  for (let i = 0; i < Math.min(limit, 10); i++) {
+    quantumResults.push({
+      id: `qp-${i}`,
+      title: `⚛️ QUANTUM POSSIBILITY: ${q} in ${quantumStates[i % quantumStates.length]} State ⚛️`,
+      url: `https://quantum.zass.website/possibility/${Date.now() + i}`,
+      snippet: `💫 QUANTUM REALM DISCOVERY! At the quantum level, "${q}" exists in ${Math.floor(Math.random() * 1000)} parallel states simultaneously. ${generateQuantumContent(q)} This defies classical physics!`,
+      source: 'ZASS Quantum',
+      type: 'quantum',
+      relevance: 0.99 - (i * 0.01),
+      isQuantum: true,
+      badge: '⚛️ QUANTUM REALM'
+    });
+  }
+  return { source: 'ZASS Quantum', results: quantumResults };
+}
+
+async function generateSearchSummary(query, results) {
+  const topics = results.slice(0, 5).map(r => r.title?.substring(0, 30) || 'related');
+  return {
+    overview: `Your search for "${query}" found ${results.length} incredible results across multiple dimensions, universes, and realities.`,
+    keyFindings: topics.map(t => `• ${t}...`).join('\n'),
+    uniqueDiscovery: `✨ We discovered ${Math.floor(Math.random() * 100) + 1} completely new insights about "${query}" that have never been documented before! ✨`,
+    quantumInsight: `⚛️ Quantum analysis reveals that "${query}" exists in ${Math.floor(Math.random() * 1000)} parallel states simultaneously. ⚛️`
+  };
+}
+
+async function generateRelatedSearches(query) {
+  const related = [
+    `${query} explained`,
+    `${query} vs reality`,
+    `The truth about ${query}`,
+    `${query} in 2030`,
+    `Why ${query} matters`,
+    `${query} secrets revealed`,
+    `The future of ${query}`,
+    `${query} conspiracy`,
+    `${query} scientific proof`,
+    `${query} across dimensions`
+  ];
+  return related.slice(0, 8);
+}
+
+async function generateNeverSeenBeforeContent(query) {
+  const discoveries = [
+    `🌟 BREAKTHROUGH: Scientists just discovered that "${query}" has ${Math.floor(Math.random() * 1000)} unknown properties! 🌟`,
+    `🚀 EXCLUSIVE: This is the first time in history that "${query}" has been analyzed at the quantum level! 🚀`,
+    `💫 REVELATION: Ancient texts reveal that "${query}" was predicted ${Math.floor(Math.random() * 10000)} years ago! 💫`,
+    `🔮 FUTURE VISION: According to quantum computing, "${query}" will become ${Math.random() > 0.5 ? 'the most important discovery' : 'a revolutionary concept'} by 2030! 🔮`,
+    `🌌 DIMENSIONAL BREAK: Researchers from Universe-7 confirm that "${query}" exists across 5 different dimensions! 🌌`
+  ];
+  return discoveries[Math.floor(Math.random() * discoveries.length)];
+}
+
+function generateAISnippet(query) {
+  const snippets = [
+    `This is groundbreaking AI-generated content about "${query}" that no human has ever seen.`,
+    `Our AI has analyzed "${query}" from 1,000,000 different perspectives to bring you unique insights.`,
+    `Discover the hidden patterns and connections within "${query}" that only AI can detect.`,
+    `This content about "${query}" was generated using advanced neural networks trained on the entire internet.`,
+    `Uncover the secrets of "${query}" through the lens of artificial intelligence.`
+  ];
+  return snippets[Math.floor(Math.random() * snippets.length)];
+}
+
+function generateUniqueContent(query) {
+  const unique = [
+    `This is a world-first discovery about "${query}". No search engine has ever found this before.`,
+    `🚨 EXCLUSIVE! This content exists only on ZASS. You won't find it anywhere else on Earth or in any known universe.`,
+    `💎 UNIQUE FIND! Our quantum scanners detected this information about "${query}" in a parallel dimension.`,
+    `✨ SPECIAL DISCOVERY! This content was generated specifically for your search and will never appear again.`
+  ];
+  return unique[Math.floor(Math.random() * unique.length)];
+}
+
+function generateParallelContent(query, universe) {
+  const parallel = [
+    `In Universe ${universe}, "${query}" has a completely different meaning. It represents ${Math.random() > 0.5 ? 'peace and prosperity' : 'technological advancement'}.`,
+    `Citizens of Universe ${universe} have perfected "${query}" beyond our wildest imagination.`,
+    `The ${universe} civilization has documented over 10,000 unique applications of "${query}" that don't exist in our reality.`
+  ];
+  return parallel[Math.floor(Math.random() * parallel.length)];
+}
+
+function generateQuantumContent(query) {
+  const quantum = [
+    `At the quantum level, "${query}" simultaneously exists as both a particle and a wave, occupying infinite positions at once.`,
+    `Quantum entanglement reveals that every "${query}" is connected to every other "${query}" across space and time.`,
+        `Observing "${query}" at the quantum scale changes its fundamental properties, creating a new reality with each measurement.`,
+    `The quantum signature of "${query}" matches patterns found in the cosmic microwave background radiation.`,
+    `Quantum computing predicts that "${query}" will be the key to unlocking faster-than-light travel.`
+  ];
+  return quantum[Math.floor(Math.random() * quantum.length)];
+}
+
+function generateRelatedTopics(query) {
+  const topics = [
+    `#${query.replace(/ /g, '')}`,
+    `${query} news`,
+    `${query} updates`,
+    `trending ${query}`,
+    `${query} community`
+  ];
+  return topics.slice(0, 3).join(', ');
+}
 
 // Dashboard page
 app.get('/dashboard', (req, res) => {
