@@ -454,3 +454,51 @@
     "possible": "♾️.♾️.♾️"
   }
 }
+
+{
+  "name": "zass-self-updating-system",
+  "version": "∞.∞.∞",
+  "description": "🔄 THE LIVING SYSTEM - Self-updating, Self-healing, Self-evolving, Self-improving, Self-aware Platform",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "watch": "nodemon --watch . --ext js,json,yaml --exec 'node index.js'",
+    "update": "node src/autoUpdater.js",
+    "update:force": "node src/autoUpdater.js --force",
+    "update:check": "node src/checkUpdates.js",
+    "self-heal": "node src/selfHealer.js",
+    "self-evolve": "node src/selfEvolver.js",
+    "self-optimize": "node src/selfOptimizer.js",
+    "auto-scale": "node src/autoScaler.js",
+    "auto-backup": "node src/autoBackup.js",
+    "auto-restore": "node src/autoRestore.js",
+    "monitor": "node src/monitor.js",
+    "dashboard": "node src/dashboard.js",
+    "pm2:start": "pm2 start ecosystem.config.js --watch",
+    "pm2:restart": "pm2 restart all",
+    "pm2:logs": "pm2 logs",
+    "docker:up": "docker-compose up -d",
+    "docker:watch": "docker-compose up --watch",
+    "k8s:rollout": "kubectl rollout restart deployment/zass-system",
+    "k8s:watch": "kubectl get pods --watch"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.5",
+    "mongoose": "^8.4.1",
+    "redis": "^4.6.13",
+    "bull": "^4.12.0",
+    "node-cron": "^3.0.3",
+    "chokidar": "^3.6.0",
+    "fs-extra": "^11.2.0",
+    "axios": "^1.7.2",
+    "semver": "^7.6.2",
+    "simple-git": "^3.24.0",
+    "nodemon": "^3.1.1",
+    "pm2": "^5.3.1",
+    "dockerode": "^4.0.2",
+    "kubernetes-client": "^9.0.0",
+    "winston": "^3.13.0",
+    "nodemailer": "^6.9.13"
+  }
+}
