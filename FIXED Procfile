@@ -2,3 +2,7 @@
 web: node index.js
 worker: node src/autoUpdater.js
 cron: node src/monitor.js
+
+# Procfile for Heroku
+web: node index.js
+worker: node src/autoUpdater.js
