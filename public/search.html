@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZASS Ultimate Search - Search Anything in the Universe</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        /* Animated Background */
+        .animated-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+        }
+
+        .animated-bg::before {
+            content: '';
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(102,126,234,0.3) 0%, rgba(118,75,162,0.3) 100%);
+            animation: rotate 20s linear infinite;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Search Container */
+        .search-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Search Header */
+        .search-header {
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 20px;
+            z-index: 100;
+        }
+
+        .zass-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .zass-brand h1 {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            font-size: 24px;
+        }
+
+        /* Search Box */
+        .search-box {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .search-input-wrapper {
+            flex: 1;
+            position: relative;
+        }
+
+        .search-input-wrapper i {
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #999;
+            font-size: 18px;
+        }
+
+        #searchInput {
+            width: 100%;
+            padding: 18px 20px 18px 50px;
+            border: 2px solid #e0e0e0;
+            border-radius: 50px;
+            font-size: 16px;
+            transition: all 0.3s;
+            font-family: inherit;
+        }
+
+        #searchInput:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102,126,234,0.2);
+        }
+
+        .search-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border: none;
+            padding: 0 30px;
+            border-radius: 50px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .search-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102,126,234,0.4);
+        }
+
+        /* Filters */
+        .search-filters {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            background: #f0f0f0;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 13px;
+        }
+
+        .filter-btn.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .filter-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        /* Loading Animation */
+        .loading-container {
+            text-align: center;
+            padding: 60px;
+            display: none;
+        }
+
+        .quantum-loader {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            position: relative;
+        }
+
+        .quantum-loader::before,
+        .quantum-loader::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 3px solid transparent;
+        }
+
+        .quantum-loader::before {
+            border-top-color: #667eea;
+            animation: spin 1s linear infinite;
+        }
+
+        .quantum-loader::after {
+            border-bottom-color: #764ba2;
+            animation: spin 1s linear infinite reverse;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Results Container */
+        .results-container {
+            display: none;
+        }
+
+        /* Result Stats */
+        .result-stats {
+            background: rgba(255,255,255,0.9);
+            border-radius: 15px;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .stats-info {
+            display: flex;
+            gap: 20px;
+        }
+
+        .stats-info span {
+            font-size: 13px;
+            color: #666;
+        }
+
+        .stats-info i {
+            margin-right: 5px;
+            color: #667eea;
+        }
+
+        /* AI Summary Card */
+        .ai-summary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 25px;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .ai-summary::before {
+            content: '🤖';
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            font-size: 50px;
+            opacity: 0.2;
+        }
+
+        .ai-summary h3 {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .ai-summary p {
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        /* Result Card */
+        .result-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: all 0.3s;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .result-card:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        .result-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .result-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a1a2e;
+            margin-bottom: 8px;
+            padding-right: 100px;
+        }
+
+        .result-url {
+            font-size: 12px;
+            color: #667eea;
+            margin-bottom: 8px;
+        }
+
+        .result-snippet {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.5;
+        }
+
+        .result-meta {
+            margin-top: 10px;
+            display: flex;
+            gap: 15px;
+            font-size: 12px;
+            color: #999;
+        }
+
+        /* Related Searches */
+        .related-searches {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .related-searches h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .related-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .related-tag {
+            background: #f0f0f0;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .related-tag:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        /* Never Seen Before Section */
+        .never-seen {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 25px;
+            color: white;
+            position: relative;
+            overflow: hidden;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.01); }
+        }
+
+        .never-seen::before {
+            content: '✨';
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            font-size: 60px;
+            opacity: 0.3;
+            animation: float 3s infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .never-seen h3 {
+            font-size: 20px;
+            margin-bottom: 15px;
+        }
+
+        .never-seen p {
+            line-height: 1.6;
+            font-size: 16px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .search-box {
+                flex-direction: column;
+            }
+            .result-title {
+                font-size: 16px;
+                padding-right: 0;
+            }
+            .result-badge {
+                position: relative;
+                top: auto;
+                right: auto;
+                display: inline-block;
+                margin-bottom: 10px;
+            }
+            .stats-info {
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="animated-bg"></div>
+
+    <div class="search-container">
+        <div class="search-header">
+            <div class="zass-brand">
+                <i class="fas fa-search" style="font-size: 28px; color: #667eea;"></i>
+                <h1>ZASS ULTIMATE SEARCH</h1>
+            </div>
+            
+            <div class="search-box">
+                <div class="search-input-wrapper">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="searchInput" placeholder="Search ANYTHING in the universe... Try something impossible!" value="the meaning of everything">
+                </div>
+                <button class="search-btn" onclick="performUltimateSearch()">
+                    <i class="fas fa-search"></i>
+                    <span>Search Universe</span>
+                </button>
+            </div>
+            
+            <div class="search-filters">
+                <button class="filter-btn active" data-mode="unlimited">🌌 Unlimited</button>
+                <button class="filter-btn" data-mode="quantum">⚛️ Quantum</button>
+                <button class="filter-btn" data-mode="parallel">🌍 Parallel Universe</button>
+                <button class="filter-btn" data-mode="ai">🤖 AI Generated</button>
+                <button class="filter-btn" data-mode="unique">✨ Never Seen Before</button>
+            </div>
+        </div>
+
+        <!-- Loading Animation -->
+        <div class="loading-container" id="loadingContainer">
+            <div class="quantum-loader"></div>
+            <p style="color: white; margin-top: 20px;">🌀 Scanning multiple dimensions...</p>
+            <p style="color: rgba(255,255,255,0.7); font-size: 14px; margin-top: 10px;">🔍 Searching across parallel universes...</p>
+            <p style="color: rgba(255,255,255,0.5); font-size: 12px; margin-top: 5px;">⚡ Quantum computing in progress...</p>
+        </div>
+
+        <!-- Results Container -->
+        <div class="results-container" id="resultsContainer"></div>
+    </div>
+
+    <script>
+        let currentMode = 'unlimited';
+        
+        // Setup filter buttons
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentMode = btn.dataset.mode;
+                if (document.getElementById('searchInput').value.trim()) {
+                    performUltimateSearch();
+                }
+            });
+        });
+        
+        // Enter key search
+        document.getElementById('searchInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                performUltimateSearch();
+            }
+        });
+        
+        async function performUltimateSearch() {
+            const query = document.getElementById('searchInput').value.trim();
+            if (!query) {
+                alert('Please enter something to search...');
+                return;
+            }
+            
+            // Show loading
+            document.getElementById('loadingContainer').style.display = 'block';
+            document.getElementById('resultsContainer').style.display = 'none';
+            
+            // Animate loading text
+            const loadingMessages = [
+                '🌀 Scanning the universe...',
+                '🔍 Searching across dimensions...',
+                '⚛️ Quantum computing in progress...',
+                '🌌 Exploring parallel realities...',
+                '✨ Discovering unique content...',
+                '🚀 Analyzing infinite possibilities...',
+                '💫 Calculating relevance score...'
+            ];
+            let msgIndex = 0;
+            const loadingP = document.querySelector('#loadingContainer p:first-of-type');
+            const interval = setInterval(() => {
+                if (loadingP) {
+                    loadingP.innerHTML = `${loadingMessages[msgIndex % loadingMessages.length]}`;
+                    msgIndex++;
+                }
+            }, 2000);
+            
+            try {
+                const response = await fetch(`/api/search/ultimate?q=${encodeURIComponent(query)}&limit=30&mode=${currentMode}`);
+                const data = await response.json();
+                
+                clearInterval(interval);
+                
+                if (data.success) {
+                    displayResults(data);
+                } else {
+                    document.getElementById('resultsContainer').innerHTML = `
+                        <div style="background: white; border-radius: 20px; padding: 40px; text-align: center;">
+                            <i class="fas fa-exclamation-triangle" style="font-size: 60px; color: #ff4757; margin-bottom: 20px;"></i>
+                            <h3>Search encountered an issue</h3>
+                            <p>But we found ${data.results?.length || 0} results anyway!</p>
+                        </div>
+                    `;
+                    if (data.results && data.results.length > 0) {
+                        displayResultList(data.results, data.query);
+                    }
+                }
+            } catch (error) {
+                clearInterval(interval);
+                document.getElementById('resultsContainer').innerHTML = `
+                    <div style="background: white; border-radius: 20px; padding: 40px; text-align: center;">
+                        <i class="fas fa-times-circle" style="font-size: 60px; color: #ff4757; margin-bottom: 20px;"></i>
+                        <h3>Search Error</h3>
+                        <p>${error.message}</p>
+                        <button onclick="performUltimateSearch()" style="margin-top: 20px; padding: 10px 30px; background: linear-gradient(135deg, #667eea, #764ba2); border: none; border-radius: 25px; color: white; cursor: pointer;">Try Again</button>
+                    </div>
+                `;
+            } finally {
+                document.getElementById('loadingContainer').style.display = 'none';
+                document.getElementById('resultsContainer').style.display = 'block';
+            }
+        }
+        
+        function displayResults(data) {
+            const container = document.getElementById('resultsContainer');
+            
+            // Build HTML
+            let html = `
+                <!-- Result Stats -->
+                <div class="result-stats">
+                    <div class="stats-info">
+                        <span><i class="fas fa-chart-line"></i> ${data.resultsCount} results</span>
+                        <span><i class="fas fa-clock"></i> ${data.searchTime}</span>
+                        <span><i class="fas fa-globe"></i> Mode: ${data.mode}</span>
+                        <span><i class="fas fa-search"></i> "${escapeHtml(data.query)}"</span>
+                    </div>
+                    <div>
+                        <span><i class="fas fa-rocket"></i> ZASS Ultimate Search</span>
+                    </div>
+                </div>
+            `;
+            
+            // AI Summary
+            if (data.aiSummary) {
+                html += `
+                    <div class="ai-summary">
+                        <h3><i class="fas fa-robot"></i> AI Search Summary</h3>
+                        <p>${escapeHtml(data.aiSummary.overview || '')}</p>
+                        <p>${escapeHtml(data.aiSummary.uniqueDiscovery || '')}</p>
+                        <p><strong>⚛️ Quantum Insight:</strong> ${escapeHtml(data.aiSummary.quantumInsight || '')}</p>
+                    </div>
+                `;
+            }
+            
+            // Never Seen Before Section
+            if (data.neverSeenBefore) {
+                html += `
+                    <div class="never-seen">
+                        <h3><i class="fas fa-star"></i> ✨ NEVER SEEN BEFORE DISCOVERY ✨</h3>
+                        <p>${escapeHtml(data.neverSeenBefore)}</p>
+                    </div>
+                `;
+            }
+            
+            // Results list
+            html += `<div id="resultsList"></div>`;
+            
+            // Related Searches
+            if (data.relatedSearches && data.relatedSearches.length > 0) {
+                html += `
+                    <div class="related-searches">
+                        <h3><i class="fas fa-link"></i> Related Searches</h3>
+                        <div class="related-tags" id="relatedTags"></div>
+                    </div>
+                `;
+            }
+            
+            container.innerHTML = html;
+            
+            // Display results list
+            displayResultList(data.results, data.query);
+            
+            // Display related tags
+            if (data.relatedSearches && data.relatedSearches.length > 0) {
+                const tagsContainer = document.getElementById('relatedTags');
+                tagsContainer.innerHTML = data.relatedSearches.map(tag => 
+                    `<span class="related-tag" onclick="searchNew('${escapeHtml(tag)}')">${escapeHtml(tag)}</span>`
+                ).join('');
+            }
+            
+            // Update page title
+            document.title = `${data.resultsCount} results for "${data.query}" - ZASS Ultimate Search`;
+        }
+        
+        function displayResultList(results, query) {
+            const container = document.getElementById('resultsList');
+            if (!container) return;
+            
+            if (!results || results.length === 0) {
+                container.innerHTML = `
+                    <div style="background: white; border-radius: 20px; padding: 40px; text-align: center;">
+                        <i class="fas fa-search" style="font-size: 60px; color: #999; margin-bottom: 20px;"></i>
+                        <h3>No results found for "${escapeHtml(query)}"</h3>
+                        <p>Try searching for something else or check your spelling</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = results.map(result => `
+                <div class="result-card" onclick="window.open('${escapeHtml(result.url)}', '_blank')">
+                    ${result.badge ? `<div class="result-badge">${escapeHtml(result.badge)}</div>` : ''}
+                    <div class="result-title">${escapeHtml(result.title)}</div>
+                    <div class="result-url">${escapeHtml(result.url)}</div>
+                    <div class="result-snippet">${escapeHtml(result.snippet)}</div>
+                    <div class="result-meta">
+                        <span><i class="fas fa-${getSourceIcon(result.source)}"></i> ${escapeHtml(result.source)}</span>
+                        <span><i class="fas fa-star"></i> Relevance: ${Math.round((result.relevance || 0.5) * 100)}%</span>
+                        ${result.type ? `<span><i class="fas fa-${getTypeIcon(result.type)}"></i> ${escapeHtml(result.type)}</span>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function getSourceIcon(source) {
+            const icons = {
+                'Google': 'google',
+                'Bing': 'search',
+                'DuckDuckGo': 'duck',
+                'YouTube': 'youtube',
+                'Twitter': 'twitter',
+                'Reddit': 'reddit',
+                'ZASS AI': 'robot',
+                'ZASS Universe': 'star',
+                'ZASS Multiverse': 'globe',
+                'ZASS Quantum': 'atom',
+                'default': 'globe'
+            };
+            return icons[source] || icons.default;
+        }
+        
+        function getTypeIcon(type) {
+            const icons = {
+                'web': 'globe',
+                'video': 'video',
+                'social': 'users',
+                'image': 'image',
+                'news': 'newspaper',
+                'trend': 'chart-line',
+                'ai-generated': 'robot',
+                'unique': 'star',
+                'parallel-universe': 'globe',
+                'quantum': 'atom',
+                'default': 'file-alt'
+            };
+            return icons[type] || icons.default;
+        }
+        
+        function searchNew(query) {
+            document.getElementById('searchInput').value = query;
+            performUltimateSearch();
+        }
+        
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Auto-search on load with default query
+        setTimeout(() => {
+            performUltimateSearch();
+        }, 500);
+    </script>
+</body>
+</html>
