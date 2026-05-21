@@ -1,1086 +1,355 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ZASS Browser - Unlimited Web Browser</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+const express = require('express');
+const path = require('path');
+const cors = require('cors');
+const helmet = require('helmet');
+const compression = require('compression');
+const morgan = require('morgan');
+const axios = require('axios');
+const { JSDOM } = require('jsdom');
 
-        :root {
-            --bg-primary: #ffffff;
-            --bg-secondary: #f1f3f4;
-            --text-primary: #202124;
-            --text-secondary: #5f6368;
-            --border-color: #dadce0;
-            --accent: #1a73e8;
-            --accent-hover: #1557b0;
-            --danger: #ea4335;
-            --success: #34a853;
-            --warning: #fbbc04;
-        }
+require('dotenv').config();
 
-        body.dark {
-            --bg-primary: #1a1a1a;
-            --bg-secondary: #2d2d2d;
-            --text-primary: #e8eaed;
-            --text-secondary: #9aa0a6;
-            --border-color: #3c4043;
-        }
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-        body {
-            font-family: 'Inter', sans-serif;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            overflow: hidden;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
+// Middleware
+app.use(helmet({ contentSecurityPolicy: false }));
+app.use(cors());
+app.use(compression());
+app.use(morgan('combined'));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, 'public')));
 
-        /* Browser Header */
-        .browser-header {
-            background: var(--bg-primary);
-            border-bottom: 1px solid var(--border-color);
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-        }
+// ============ BROWSER PROXY ENDPOINTS ============
 
-        .toolbar {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 12px;
-            flex-wrap: wrap;
-        }
+// Main browser page
+app.get('/browser', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'browser.html'));
+});
 
-        .nav-buttons {
-            display: flex;
-            gap: 4px;
+// Browse endpoint - fetches and returns HTML content
+app.get('/api/browser/browse', async (req, res) => {
+    const targetUrl = req.query.url;
+    
+    if (!targetUrl) {
+        return res.status(400).json({ 
+            success: false, 
+            error: 'URL parameter is required' 
+        });
+    }
+    
+    try {
+        // Validate and format URL
+        let url = targetUrl;
+        if (!url.startsWith('http')) {
+            url = 'https://' + url;
         }
-
-        .nav-btn {
-            background: transparent;
-            border: none;
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            cursor: pointer;
-            color: var(--text-secondary);
-            font-size: 16px;
-            transition: all 0.2s;
-        }
-
-        .nav-btn:hover {
-            background: var(--bg-secondary);
-            color: var(--text-primary);
-        }
-
-        .url-bar {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            background: var(--bg-secondary);
-            border-radius: 24px;
-            padding: 4px 12px;
-            border: 1px solid var(--border-color);
-            transition: all 0.2s;
-        }
-
-        .url-bar:focus-within {
-            border-color: var(--accent);
-            box-shadow: 0 0 0 2px rgba(26,115,232,0.2);
-        }
-
-        .url-bar i {
-            color: var(--text-secondary);
-            margin-right: 8px;
-        }
-
-        #urlInput {
-            flex: 1;
-            background: transparent;
-            border: none;
-            padding: 10px 0;
-            font-size: 14px;
-            color: var(--text-primary);
-            outline: none;
-            font-family: inherit;
-        }
-
-        .go-btn {
-            background: var(--accent);
-            border: none;
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            color: white;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .go-btn:hover {
-            background: var(--accent-hover);
-            transform: scale(1.02);
-        }
-
-        .actions {
-            display: flex;
-            gap: 4px;
-        }
-
-        .action-btn {
-            background: transparent;
-            border: none;
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            cursor: pointer;
-            color: var(--text-secondary);
-            font-size: 16px;
-            transition: all 0.2s;
-        }
-
-        .action-btn:hover {
-            background: var(--bg-secondary);
-            color: var(--text-primary);
-        }
-
-        /* Tab Bar */
-        .tab-bar {
-            display: flex;
-            align-items: center;
-            background: var(--bg-primary);
-            padding: 0 8px;
-            gap: 2px;
-            overflow-x: auto;
-            scrollbar-width: thin;
-        }
-
-        .tab {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            background: var(--bg-secondary);
-            padding: 8px 12px;
-            border-radius: 12px 12px 0 0;
-            cursor: pointer;
-            min-width: 140px;
-            max-width: 200px;
-            font-size: 13px;
-            color: var(--text-secondary);
-            border-bottom: 2px solid transparent;
-            transition: all 0.2s;
-        }
-
-        .tab.active {
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            border-bottom-color: var(--accent);
-        }
-
-        .tab-title {
-            flex: 1;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .tab-close {
-            background: transparent;
-            border: none;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            cursor: pointer;
-            color: var(--text-secondary);
-            font-size: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .tab-close:hover {
-            background: var(--border-color);
-            color: var(--danger);
-        }
-
-        .new-tab-btn {
-            background: transparent;
-            border: none;
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            cursor: pointer;
-            color: var(--text-secondary);
-            font-size: 16px;
-        }
-
-        .new-tab-btn:hover {
-            background: var(--bg-secondary);
-        }
-
-        /* Browser Viewport */
-        .viewport {
-            flex: 1;
-            position: relative;
-            background: var(--bg-primary);
-        }
-
-        #browserFrame {
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
-
-        .loading-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.7);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 100;
-        }
-
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 3px solid var(--border-color);
-            border-top-color: var(--accent);
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        /* Status Bar */
-        .status-bar {
-            background: var(--bg-secondary);
-            border-top: 1px solid var(--border-color);
-            padding: 4px 16px;
-            display: flex;
-            justify-content: space-between;
-            font-size: 12px;
-            color: var(--text-secondary);
-        }
-
-        /* Sidebar */
-        .sidebar {
-            position: fixed;
-            top: 0;
-            right: 0;
-            width: 320px;
-            height: 100vh;
-            background: var(--bg-primary);
-            box-shadow: -2px 0 10px rgba(0,0,0,0.1);
-            z-index: 2000;
-            transform: translateX(100%);
-            transition: transform 0.3s ease;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .sidebar.open {
-            transform: translateX(0);
-        }
-
-        .sidebar-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 16px;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .sidebar-content {
-            flex: 1;
-            overflow-y: auto;
-            padding: 16px;
-        }
-
-        /* Modal */
-        .modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.5);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 3000;
-        }
-
-        .modal-content {
-            background: var(--bg-primary);
-            border-radius: 16px;
-            width: 500px;
-            max-width: 90%;
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .modal-body {
-            padding: 20px;
-        }
-
-        .setting-group {
-            margin-bottom: 20px;
-        }
-
-        .setting-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-        }
-
-        .setting-group input,
-        .setting-group select {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-        }
-
-        .modal-footer {
-            padding: 20px;
-            border-top: 1px solid var(--border-color);
-            display: flex;
-            gap: 12px;
-            justify-content: flex-end;
-        }
-
-        .btn-primary, .btn-secondary {
-            padding: 10px 20px;
-            border-radius: 8px;
-            border: none;
-            cursor: pointer;
-            font-weight: 500;
-        }
-
-        .btn-primary {
-            background: var(--accent);
-            color: white;
-        }
-
-        .btn-secondary {
-            background: var(--bg-secondary);
-            color: var(--text-primary);
-        }
-
-        /* Bookmark item */
-        .bookmark-item {
-            padding: 12px;
-            cursor: pointer;
-            border-bottom: 1px solid var(--border-color);
-            transition: background 0.2s;
-        }
-
-        .bookmark-item:hover {
-            background: var(--bg-secondary);
-        }
-
-        .bookmark-title {
-            font-weight: 500;
-            margin-bottom: 4px;
-        }
-
-        .bookmark-url {
-            font-size: 11px;
-            color: var(--text-secondary);
-            word-break: break-all;
-        }
-
-        /* History item */
-        .history-item {
-            padding: 12px;
-            cursor: pointer;
-            border-bottom: 1px solid var(--border-color);
-            transition: background 0.2s;
-        }
-
-        .history-item:hover {
-            background: var(--bg-secondary);
-        }
-
-        .history-title {
-            font-weight: 500;
-            margin-bottom: 4px;
-        }
-
-        .history-url {
-            font-size: 11px;
-            color: var(--text-secondary);
-            word-break: break-all;
-        }
-
-        .history-time {
-            font-size: 10px;
-            color: var(--text-secondary);
-            margin-top: 4px;
-        }
-
-        /* Empty state */
-        .empty-state {
-            text-align: center;
-            padding: 40px 20px;
-            color: var(--text-secondary);
-        }
-
-        .empty-state i {
-            font-size: 48px;
-            margin-bottom: 16px;
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .toolbar {
-                flex-wrap: wrap;
-            }
-            
-            .url-bar {
-                order: 3;
-                width: 100%;
-            }
-            
-            .tab {
-                min-width: 100px;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="browser-header">
-        <div class="toolbar">
-            <div class="nav-buttons">
-                <button class="nav-btn" id="backBtn" title="Go Back"><i class="fas fa-arrow-left"></i></button>
-                <button class="nav-btn" id="forwardBtn" title="Go Forward"><i class="fas fa-arrow-right"></i></button>
-                <button class="nav-btn" id="reloadBtn" title="Reload"><i class="fas fa-sync-alt"></i></button>
-                <button class="nav-btn" id="homeBtn" title="Home"><i class="fas fa-home"></i></button>
-            </div>
-            
-            <div class="url-bar">
-                <i class="fas fa-lock" id="secureIcon"></i>
-                <input type="text" id="urlInput" placeholder="Search or enter website URL...">
-                <button class="go-btn" id="goBtn"><i class="fas fa-arrow-right"></i></button>
-            </div>
-            
-            <div class="actions">
-                <button class="action-btn" id="bookmarksBtn" title="Bookmarks"><i class="fas fa-bookmark"></i></button>
-                <button class="action-btn" id="historyBtn" title="History"><i class="fas fa-history"></i></button>
-                <button class="action-btn" id="downloadsBtn" title="Downloads"><i class="fas fa-download"></i></button>
-                <button class="action-btn" id="settingsBtn" title="Settings"><i class="fas fa-cog"></i></button>
-                <button class="action-btn" id="darkModeBtn" title="Dark Mode"><i class="fas fa-moon"></i></button>
-                <button class="action-btn" id="fullscreenBtn" title="Fullscreen"><i class="fas fa-expand"></i></button>
-            </div>
-        </div>
         
-        <div class="tab-bar" id="tabBar">
-            <div class="tab active" data-tab-id="0">
-                <span class="tab-title">New Tab</span>
-                <button class="tab-close"><i class="fas fa-times"></i></button>
-            </div>
-            <button class="new-tab-btn" id="newTabBtn"><i class="fas fa-plus"></i></button>
-        </div>
-    </div>
-    
-    <div class="viewport">
-        <iframe id="browserFrame" title="ZASS Browser" sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals allow-downloads allow-top-navigation allow-popups-to-escape-sandbox"></iframe>
-        <div class="loading-overlay" id="loadingOverlay" style="display: none;">
-            <div class="spinner"></div>
-            <p style="margin-top: 16px; color: white;">Loading...</p>
-        </div>
-    </div>
-    
-    <div class="status-bar">
-        <div><i class="fas fa-globe"></i> <span id="statusText">Ready</span></div>
-        <div><span id="pageInfo"></span></div>
-        <div>
-            <span id="zoomLevel">100%</span>
-            <button id="zoomOut" style="background: none; border: none; cursor: pointer; margin-left: 8px;">-</button>
-            <button id="zoomIn" style="background: none; border: none; cursor: pointer;">+</button>
-        </div>
-    </div>
-    
-    <!-- Sidebar -->
-    <div class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <h3 id="sidebarTitle">Bookmarks</h3>
-            <button id="closeSidebar" style="background: none; border: none; font-size: 20px; cursor: pointer;">&times;</button>
-        </div>
-        <div class="sidebar-content" id="sidebarContent">
-            <div class="empty-state">
-                <i class="fas fa-bookmark"></i>
-                <p>No bookmarks yet</p>
-                <small>Click the bookmark icon to add current page</small>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Settings Modal -->
-    <div class="modal" id="settingsModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2><i class="fas fa-cog"></i> Browser Settings</h2>
-                <button id="closeSettings" style="background: none; border: none; font-size: 24px; cursor: pointer;">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="setting-group">
-                    <label>Default Search Engine</label>
-                    <select id="defaultEngine">
-                        <option value="google">Google</option>
-                        <option value="bing">Bing</option>
-                        <option value="duckduckgo">DuckDuckGo</option>
-                        <option value="youtube">YouTube</option>
-                    </select>
-                </div>
-                <div class="setting-group">
-                    <label>Homepage</label>
-                    <input type="text" id="homepageUrl" placeholder="https://www.google.com">
-                </div>
-                <div class="setting-group">
-                    <label>Block Ads</label>
-                    <input type="checkbox" id="blockAds"> Yes, block annoying ads
-                </div>
-                <div class="setting-group">
-                    <label>Save History</label>
-                    <input type="checkbox" id="saveHistory" checked> Save browsing history
-                </div>
-                <div class="setting-group">
-                    <label>Dark Mode</label>
-                    <input type="checkbox" id="darkModeSetting"> Enable Dark Mode
-                </div>
-                <div class="setting-group">
-                    <label>Adult Content</label>
-                    <input type="checkbox" id="adultContent" checked> Allow adult content
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn-primary" id="saveSettings">Save Settings</button>
-                <button class="btn-secondary" id="cancelSettings">Cancel</button>
-            </div>
-        </div>
-    </div>
-    
-    <script>
-        // Browser State
-        let currentTab = { id: 0, url: 'https://www.google.com', title: 'Google', history: ['https://www.google.com'], historyIndex: 0 };
-        let tabs = [{ id: 0, title: 'Google', url: 'https://www.google.com', history: ['https://www.google.com'], historyIndex: 0 }];
-        let bookmarks = JSON.parse(localStorage.getItem('browser_bookmarks') || '[]');
-        let history = JSON.parse(localStorage.getItem('browser_history') || '[]');
-        let settings = JSON.parse(localStorage.getItem('browser_settings') || '{}');
-        let zoomLevel = 100;
-        
-        // DOM Elements
-        const browserFrame = document.getElementById('browserFrame');
-        const urlInput = document.getElementById('urlInput');
-        const loadingOverlay = document.getElementById('loadingOverlay');
-        const statusText = document.getElementById('statusText');
-        const pageInfo = document.getElementById('pageInfo');
-        const zoomLevelSpan = document.getElementById('zoomLevel');
-        
-        // Initialize
-        document.addEventListener('DOMContentLoaded', () => {
-            loadSettings();
-            loadBookmarks();
-            loadHistory();
-            setupEventListeners();
-            navigateTo('https://www.google.com');
+        // Fetch the webpage
+        const response = await axios.get(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Accept-Encoding': 'gzip, deflate, br'
+            },
+            timeout: 30000,
+            maxRedirects: 5
         });
         
-        function loadSettings() {
-            if (settings.defaultEngine) {
-                document.getElementById('defaultEngine').value = settings.defaultEngine;
-            }
-            if (settings.homepage) {
-                document.getElementById('homepageUrl').value = settings.homepage;
-            }
-            if (settings.darkMode) {
-                document.body.classList.add('dark');
-                document.getElementById('darkModeSetting').checked = true;
-            }
-            if (settings.adultContent === false) {
-                document.getElementById('adultContent').checked = false;
-            }
-            if (settings.saveHistory === false) {
-                document.getElementById('saveHistory').checked = false;
-            }
+        let html = response.data;
+        
+        // Get title from HTML
+        let title = url;
+        try {
+            const dom = new JSDOM(html);
+            title = dom.window.document.title || url;
+        } catch (e) {
+            title = url;
         }
         
-        function setupEventListeners() {
-            document.getElementById('goBtn').addEventListener('click', () => navigate());
-            document.getElementById('urlInput').addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') navigate();
-            });
-            document.getElementById('backBtn').addEventListener('click', () => goBack());
-            document.getElementById('forwardBtn').addEventListener('click', () => goForward());
-            document.getElementById('reloadBtn').addEventListener('click', () => reload());
-            document.getElementById('homeBtn').addEventListener('click', () => goHome());
-            document.getElementById('newTabBtn').addEventListener('click', () => newTab());
-            document.getElementById('bookmarksBtn').addEventListener('click', () => showBookmarks());
-            document.getElementById('historyBtn').addEventListener('click', () => showHistory());
-            document.getElementById('settingsBtn').addEventListener('click', () => openSettings());
-            document.getElementById('darkModeBtn').addEventListener('click', () => toggleDarkMode());
-            document.getElementById('fullscreenBtn').addEventListener('click', () => toggleFullscreen());
-            document.getElementById('zoomIn').addEventListener('click', () => zoomIn());
-            document.getElementById('zoomOut').addEventListener('click', () => zoomOut());
-            document.getElementById('closeSidebar').addEventListener('click', () => closeSidebar());
-            document.getElementById('closeSettings').addEventListener('click', () => closeSettings());
-            document.getElementById('saveSettings').addEventListener('click', () => saveSettings());
-            document.getElementById('cancelSettings').addEventListener('click', () => closeSettings());
-            
-            // Tab close buttons
-            document.querySelectorAll('.tab-close').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const tab = btn.closest('.tab');
-                    const tabId = parseInt(tab.dataset.tabId);
-                    closeTab(tabId);
-                });
-            });
-            
-            // Tab click
-            document.querySelectorAll('.tab').forEach(tab => {
-                tab.addEventListener('click', () => {
-                    const tabId = parseInt(tab.dataset.tabId);
-                    switchToTab(tabId);
-                });
-            });
-        }
+        // Modify HTML to work in iframe (fix relative paths, add base tag)
+        html = html.replace(/<head>/i, `<head><base href="${url}/">`);
         
-        async function navigate() {
-            let url = urlInput.value.trim();
-            if (!url) return;
-            
-            // Check if it's a search query
-            if (!url.includes('.') && !url.startsWith('http')) {
-                const engine = settings.defaultEngine || 'google';
-                if (engine === 'google') {
-                    url = `https://www.google.com/search?q=${encodeURIComponent(url)}`;
-                } else if (engine === 'bing') {
-                    url = `https://www.bing.com/search?q=${encodeURIComponent(url)}`;
-                } else if (engine === 'duckduckgo') {
-                    url = `https://duckduckgo.com/?q=${encodeURIComponent(url)}`;
-                } else if (engine === 'youtube') {
-                    url = `https://www.youtube.com/results?search_query=${encodeURIComponent(url)}`;
+        // Remove X-Frame-Options headers that block iframe embedding
+        res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+        
+        res.json({
+            success: true,
+            url: url,
+            title: title,
+            html: html,
+            status: response.status
+        });
+        
+    } catch (error) {
+        console.error('Browse error:', error.message);
+        
+        // Return error page
+        const errorHtml = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Error - ZASS Browser</title>
+                <style>
+                    body {
+                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        height: 100vh;
+                        margin: 0;
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        color: white;
+                    }
+                    .error-container {
+                        text-align: center;
+                        padding: 40px;
+                    }
+                    h1 { font-size: 48px; margin-bottom: 20px; }
+                    p { font-size: 18px; margin-bottom: 30px; opacity: 0.9; }
+                    .url { background: rgba(255,255,255,0.2); padding: 10px 20px; border-radius: 8px; display: inline-block; margin-bottom: 20px; }
+                    button {
+                        background: white;
+                        border: none;
+                        padding: 12px 24px;
+                        border-radius: 8px;
+                        font-size: 16px;
+                        cursor: pointer;
+                        color: #667eea;
+                        font-weight: bold;
+                    }
+                    button:hover { transform: scale(1.05); }
+                </style>
+            </head>
+            <body>
+                <div class="error-container">
+                    <h1>🌐 Connection Error</h1>
+                    <div class="url">${targetUrl}</div>
+                    <p>${error.message || 'Failed to load the webpage'}</p>
+                    <button onclick="window.location.href='/browser'">← Back to Browser</button>
+                </div>
+            </body>
+            </html>
+        `;
+        
+        res.json({
+            success: false,
+            error: error.message,
+            html: errorHtml,
+            url: targetUrl,
+            title: 'Error'
+        });
+    }
+});
+
+// Search endpoint
+app.get('/api/browser/search', async (req, res) => {
+    const query = req.query.q;
+    const engine = req.query.engine || 'google';
+    
+    if (!query) {
+        return res.status(400).json({ success: false, error: 'Search query required' });
+    }
+    
+    let searchUrl;
+    if (engine === 'google') {
+        searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+    } else if (engine === 'bing') {
+        searchUrl = `https://www.bing.com/search?q=${encodeURIComponent(query)}`;
+    } else if (engine === 'duckduckgo') {
+        searchUrl = `https://duckduckgo.com/?q=${encodeURIComponent(query)}`;
+    } else if (engine === 'youtube') {
+        searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+    } else {
+        searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+    }
+    
+    res.json({
+        success: true,
+        url: searchUrl,
+        query: query,
+        engine: engine
+    });
+});
+
+// ============ BOOKMARKS API ============
+let bookmarks = [];
+
+app.get('/api/browser/bookmarks', (req, res) => {
+    res.json({ success: true, bookmarks });
+});
+
+app.post('/api/browser/bookmarks', (req, res) => {
+    const { url, title } = req.body;
+    
+    if (!url) {
+        return res.status(400).json({ success: false, error: 'URL required' });
+    }
+    
+    const bookmark = {
+        id: Date.now(),
+        url,
+        title: title || url,
+        createdAt: new Date().toISOString()
+    };
+    
+    // Check if already exists
+    if (!bookmarks.find(b => b.url === url)) {
+        bookmarks.unshift(bookmark);
+    }
+    
+    res.json({ success: true, bookmark });
+});
+
+app.delete('/api/browser/bookmarks/:id', (req, res) => {
+    const id = parseInt(req.params.id);
+    bookmarks = bookmarks.filter(b => b.id !== id);
+    res.json({ success: true });
+});
+
+// ============ HISTORY API ============
+let history = [];
+
+app.get('/api/browser/history', (req, res) => {
+    res.json({ success: true, history: history.slice(0, 100) });
+});
+
+app.post('/api/browser/history', (req, res) => {
+    const { url, title } = req.body;
+    
+    if (!url) return res.json({ success: false });
+    
+    const historyItem = {
+        id: Date.now(),
+        url,
+        title: title || url,
+        timestamp: new Date().toISOString()
+    };
+    
+    history.unshift(historyItem);
+    
+    // Keep only last 500 items
+    if (history.length > 500) history.pop();
+    
+    res.json({ success: true });
+});
+
+// ============ SETTINGS API ============
+let settings = {
+    defaultEngine: 'google',
+    homepage: 'https://www.google.com',
+    blockAds: false,
+    saveHistory: true,
+    darkMode: false,
+    adultContent: true
+};
+
+app.get('/api/browser/settings', (req, res) => {
+    res.json({ success: true, settings });
+});
+
+app.post('/api/browser/settings', (req, res) => {
+    settings = { ...settings, ...req.body };
+    res.json({ success: true, settings });
+});
+
+// ============ HEALTH CHECK ============
+app.get('/health', (req, res) => {
+    res.json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        node_version: process.version,
+        environment: process.env.NODE_ENV || 'development'
+    });
+});
+
+// ============ HOME PAGE ============
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'browser.html'));
+});
+
+// ============ 404 HANDLER ============
+app.use((req, res) => {
+    if (req.accepts('html')) {
+        res.status(404).send(`
+            <!DOCTYPE html>
+            <html>
+            <head><title>404 - Page Not Found</title>
+            <style>
+                body {
+                    font-family: system-ui, -apple-system, sans-serif;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    height: 100vh;
+                    margin: 0;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    text-align: center;
                 }
-            }
-            
-            // Add https if needed
-            if (!url.startsWith('http')) {
-                url = 'https://' + url;
-            }
-            
-            navigateTo(url);
-        }
-        
-        async function navigateTo(url) {
-            showLoading();
-            
-            try {
-                // Use our backend proxy
-                const response = await fetch(`/api/browser/browse?url=${encodeURIComponent(url)}&render=full`);
-                const data = await response.json();
-                
-                if (data.success) {
-                    // Write HTML to iframe
-                    const doc = browserFrame.contentDocument || browserFrame.contentWindow.document;
-                    doc.open();
-                    doc.write(data.html);
-                    doc.close();
-                    
-                    // Update UI
-                    urlInput.value = data.url;
-                    pageInfo.textContent = data.title;
-                    document.title = `${data.title} - ZASS Browser`;
-                    
-                    // Update secure icon
-                    const secureIcon = document.getElementById('secureIcon');
-                    if (data.url.startsWith('https')) {
-                        secureIcon.className = 'fas fa-lock';
-                        secureIcon.style.color = '#34a853';
-                    } else {
-                        secureIcon.className = 'fas fa-lock-open';
-                        secureIcon.style.color = '#ea4335';
-                    }
-                    
-                    // Update tab
-                    const activeTab = document.querySelector('.tab.active');
-                    if (activeTab) {
-                        activeTab.querySelector('.tab-title').textContent = data.title.substring(0, 30);
-                    }
-                    
-                    // Update current tab
-                    currentTab.url = data.url;
-                    currentTab.title = data.title;
-                    
-                    // Add to history
-                    if (settings.saveHistory !== false) {
-                        currentTab.history = currentTab.history.slice(0, currentTab.historyIndex + 1);
-                        currentTab.history.push(data.url);
-                        currentTab.historyIndex++;
-                        
-                        // Save to global history
-                        const historyItem = {
-                            url: data.url,
-                            title: data.title,
-                            timestamp: new Date().toISOString()
-                        };
-                        history.unshift(historyItem);
-                        if (history.length > 500) history.pop();
-                        localStorage.setItem('browser_history', JSON.stringify(history));
-                    }
-                    
-                    statusText.textContent = 'Loaded';
-                } else {
-                    // Fallback to direct iframe
-                    browserFrame.src = url;
-                    statusText.textContent = 'Loaded (direct)';
-                }
-            } catch (error) {
-                console.error('Navigation error:', error);
-                browserFrame.src = url;
-                statusText.textContent = 'Error loading';
-            }
-            
-            hideLoading();
-        }
-        
-        function goBack() {
-            if (currentTab.historyIndex > 0) {
-                currentTab.historyIndex--;
-                navigateTo(currentTab.history[currentTab.historyIndex]);
-            } else {
-                browserFrame.contentWindow.history.back();
-            }
-        }
-        
-        function goForward() {
-            if (currentTab.historyIndex < currentTab.history.length - 1) {
-                currentTab.historyIndex++;
-                navigateTo(currentTab.history[currentTab.historyIndex]);
-            } else {
-                browserFrame.contentWindow.history.forward();
-            }
-        }
-        
-        function reload() {
-            navigateTo(currentTab.url);
-        }
-        
-        function goHome() {
-            const homepage = settings.homepage || 'https://www.google.com';
-            navigateTo(homepage);
-        }
-        
-        function newTab() {
-            const newId = tabs.length;
-            tabs.push({
-                id: newId,
-                title: 'New Tab',
-                url: 'https://www.google.com',
-                history: ['https://www.google.com'],
-                historyIndex: 0
-            });
-            renderTabs();
-            switchToTab(newId);
-        }
-        
-        function closeTab(tabId) {
-            if (tabs.length === 1) {
-                navigateTo('https://www.google.com');
-                return;
-            }
-            
-            const index = tabs.findIndex(t => t.id === tabId);
-            tabs.splice(index, 1);
-            
-            if (currentTab.id === tabId) {
-                const newIndex = Math.min(index, tabs.length - 1);
-                switchToTab(tabs[newIndex].id);
-            }
-            
-            renderTabs();
-        }
-        
-        function switchToTab(tabId) {
-            const tab = tabs.find(t => t.id === tabId);
-            if (tab) {
-                currentTab = tab;
-                renderTabs();
-                navigateTo(tab.url);
-            }
-        }
-        
-        function renderTabs() {
-            const tabBar = document.getElementById('tabBar');
-            const existingTabs = tabBar.querySelectorAll('.tab:not(#newTabBtn)');
-            existingTabs.forEach(tab => tab.remove());
-            
-            tabs.forEach(tab => {
-                const tabElement = document.createElement('div');
-                tabElement.className = `tab ${currentTab.id === tab.id ? 'active' : ''}`;
-                tabElement.dataset.tabId = tab.id;
-                tabElement.innerHTML = `
-                    <span class="tab-title">${tab.title}</span>
-                    <button class="tab-close"><i class="fas fa-times"></i></button>
-                `;
-                tabBar.insertBefore(tabElement, document.getElementById('newTabBtn'));
-                
-                tabElement.addEventListener('click', () => switchToTab(tab.id));
-                tabElement.querySelector('.tab-close').addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    closeTab(tab.id);
-                });
-            });
-        }
-        
-        function addBookmark() {
-            const bookmark = {
-                id: Date.now(),
-                url: currentTab.url,
-                title: currentTab.title,
-                createdAt: new Date().toISOString()
-            };
-            
-            if (!bookmarks.find(b => b.url === bookmark.url)) {
-                bookmarks.unshift(bookmark);
-                localStorage.setItem('browser_bookmarks', JSON.stringify(bookmarks));
-                showToast('Bookmark added!');
-                if (document.getElementById('sidebar').classList.contains('open') && 
-                    document.getElementById('sidebarTitle').textContent === 'Bookmarks') {
-                    showBookmarks();
-                }
-            } else {
-                showToast('Already bookmarked');
-            }
-        }
-        
-        function removeBookmark(id) {
-            bookmarks = bookmarks.filter(b => b.id !== id);
-            localStorage.setItem('browser_bookmarks', JSON.stringify(bookmarks));
-            showToast('Bookmark removed');
-            if (document.getElementById('sidebar').classList.contains('open') && 
-                document.getElementById('sidebarTitle').textContent === 'Bookmarks') {
-                showBookmarks();
-            }
-        }
-        
-        function loadBookmarks() {
-            bookmarks = JSON.parse(localStorage.getItem('browser_bookmarks') || '[]');
-        }
-        
-        function showBookmarks() {
-            const sidebar = document.getElementById('sidebar');
-            const sidebarTitle = document.getElementById('sidebarTitle');
-            const sidebarContent = document.getElementById('sidebarContent');
-            
-            sidebarTitle.textContent = 'Bookmarks';
-            sidebarContent.innerHTML = '';
-            
-            if (bookmarks.length === 0) {
-                sidebarContent.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-bookmark"></i>
-                        <p>No bookmarks yet</p>
-                        <small>Click the bookmark icon to add current page</small>
-                    </div>
-                `;
-            } else {
-                bookmarks.forEach(bookmark => {
-                    const div = document.createElement('div');
-                    div.className = 'bookmark-item';
-                    div.innerHTML = `
-                        <div class="bookmark-title">${bookmark.title}</div>
-                        <div class="bookmark-url">${bookmark.url}</div>
-                        <div style="display: flex; gap: 8px; margin-top: 8px;">
-                            <button class="delete-bookmark" data-id="${bookmark.id}" style="background: none; border: none; color: var(--danger); cursor: pointer;">Delete</button>
-                        </div>
-                    `;
-                    div.addEventListener('click', (e) => {
-                        if (!e.target.classList.contains('delete-bookmark')) {
-                            navigateTo(bookmark.url);
-                            closeSidebar();
-                        }
-                    });
-                    const deleteBtn = div.querySelector('.delete-bookmark');
-                    if (deleteBtn) {
-                        deleteBtn.addEventListener('click', (e) => {
-                            e.stopPropagation();
-                            removeBookmark(bookmark.id);
-                        });
-                    }
-                    sidebarContent.appendChild(div);
-                });
-            }
-            
-            sidebar.classList.add('open');
-        }
-        
-        function showHistory() {
-            const sidebar = document.getElementById('sidebar');
-            const sidebarTitle = document.getElementById('sidebarTitle');
-            const sidebarContent = document.getElementById('sidebarContent');
-            
-            sidebarTitle.textContent = 'History';
-            sidebarContent.innerHTML = '';
-            
-            if (history.length === 0) {
-                sidebarContent.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-history"></i>
-                        <p>No history yet</p>
-                        <small>Start browsing to see your history</small>
-                    </div>
-                `;
-            } else {
-                history.slice(0, 100).forEach(item => {
-                    const div = document.createElement('div');
-                    div.className = 'history-item';
-                    div.innerHTML = `
-                        <div class="history-title">${item.title || item.url}</div>
-                        <div class="history-url">${item.url}</div>
-                        <div class="history-time">${new Date(item.timestamp).toLocaleString()}</div>
-                    `;
-                    div.addEventListener('click', () => {
-                        navigateTo(item.url);
-                        closeSidebar();
-                    });
-                    sidebarContent.appendChild(div);
-                });
-            }
-            
-            sidebar.classList.add('open');
-        }
-        
-        function closeSidebar() {
-            document.getElementById('sidebar').classList.remove('open');
-        }
-        
-        function openSettings() {
-            document.getElementById('settingsModal').style.display = 'flex';
-        }
-        
-        function closeSettings() {
-            document.getElementById('settingsModal').style.display = 'none';
-        }
-        
-        function saveSettings() {
-            settings = {
-                defaultEngine: document.getElementById('defaultEngine').value,
-                homepage: document.getElementById('homepageUrl').value,
-                blockAds: document.getElementById('blockAds').checked,
-                saveHistory: document.getElementById('saveHistory').checked,
-                darkMode: document.getElementById('darkModeSetting').checked,
-                adultContent: document.getElementById('adultContent').checked
-            };
-            
-            localStorage.setItem('browser_settings', JSON.stringify(settings));
-            
-            if (settings.darkMode) {
-                document.body.classList.add('dark');
-            } else {
-                document.body.classList.remove('dark');
-            }
-            
-            closeSettings();
-            showToast('Settings saved');
-        }
-        
-        function toggleDarkMode() {
-            settings.darkMode = !settings.darkMode;
-            if (settings.darkMode) {
-                document.body.classList.add('dark');
-                document.getElementById('darkModeSetting').checked = true;
-            } else {
-                document.body.classList.remove('dark');
-                document.getElementById('darkModeSetting').checked = false;
-            }
-            localStorage.setItem('browser_settings', JSON.stringify(settings));
-        }
-        
-        function toggleFullscreen() {
-            if (!document.fullscreenElement) {
-                document.documentElement.requestFullscreen();
-                document.getElementById('fullscreenBtn').innerHTML = '<i class="fas fa-compress"></i>';
-            } else {
-                document.exitFullscreen();
-                document.getElementById('fullscreenBtn').innerHTML = '<i class="fas fa-expand"></i>';
-            }
-        }
-        
-        function zoomIn() {
-            zoomLevel = Math.min(zoomLevel + 10, 200);
-            applyZoom();
-        }
-        
-        function zoomOut() {
-            zoomLevel = Math.max(zoomLevel - 10, 50);
-            applyZoom();
-        }
-        
-        function applyZoom() {
-            browserFrame.style.transform = `scale(${zoomLevel / 100})`;
-            browserFrame.style.width = `${10000 / zoomLevel}%`;
-            browserFrame.style.height = `${10000 / zoomLevel}%`;
-            zoomLevelSpan.textContent = `${zoomLevel}%`;
-        }
-        
-        function showLoading() {
-            loadingOverlay.style.display = 'flex';
-            statusText.textContent = 'Loading...';
-        }
-        
-        function hideLoading() {
-            loadingOverlay.style.display = 'none';
-        }
-        
-        function showToast(message) {
-            const toast = document.createElement('div');
-            toast.textContent = message;
-            toast.style.position = 'fixed';
-            toast.style.bottom = '20px';
-            toast.style.left = '50%';
-            toast.style.transform = 'translateX(-50%)';
-            toast.style.backgroundColor = '#333';
-            toast.style.color = 'white';
-            toast.style.padding = '10px 20px';
-            toast.style.borderRadius = '8px';
-            toast.style.zIndex = '9999';
-            toast.style.fontSize = '14px';
-            document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 3000);
-        }
-        
-        function loadHistory() {
-            history = JSON.parse(localStorage.getItem('browser_history') || '[]');
-        }
-    </script>
-</body>
-</html>
+                h1 { font-size: 72px; margin-bottom: 20px; }
+                p { font-size: 20px; margin-bottom: 30px; }
+                a { color: white; background: rgba(255,255,255,0.2); padding: 12px 24px; border-radius: 8px; text-decoration: none; }
+                a:hover { background: rgba(255,255,255,0.3); }
+            </style>
+            </head>
+            <body>
+                <div>
+                    <h1>404</h1>
+                    <p>Oops! The page you're looking for doesn't exist.</p>
+                    <a href="/">← Back to Browser</a>
+                </div>
+            </body>
+            </html>
+        `);
+    } else {
+        res.status(404).json({ error: 'Not Found' });
+    }
+});
+
+// ============ ERROR HANDLER ============
+app.use((err, req, res, next) => {
+    console.error('Server error:', err);
+    res.status(500).json({
+        success: false,
+        error: 'Internal Server Error',
+        message: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
+});
+
+// ============ START SERVER ============
+const server = app.listen(PORT, () => {
+    console.log(`
+    ╔══════════════════════════════════════════════════════════════╗
+    ║                                                              ║
+    ║   🚀 ZASS BROWSER - ULTIMATE WEB BROWSER                    ║
+    ║                                                              ║
+    ║   📡 Server running on: http://localhost:${PORT}              ║
+    ║   🌐 Browser URL: http://localhost:${PORT}/browser            ║
+    ║   ❤️  Health check: http://localhost:${PORT}/health           ║
+    ║                                                              ║
+    ║   ✨ Features:                                               ║
+    ║   • Full web browser with iframe rendering                  ║
+    ║   • Bookmark management                                      ║
+    ║   • Browsing history                                         ║
+    ║   • Dark mode support                                        ║
+    ║   • Multiple tabs                                            ║
+    ║   • Search engine selection                                  ║
+    ║   • Zoom controls                                            ║
+    ║                                                              ║
+    ╚══════════════════════════════════════════════════════════════╝
+    `);
+});
+
+process.on('SIGTERM', () => {
+    console.log('SIGTERM received, closing server...');
+    server.close(() => {
+        console.log('Server closed');
+        process.exit(0);
+    });
+});
+
+module.exports = app;
