@@ -235,3 +235,26 @@ process.on('SIGTERM', () => {
   logger.info('Cron worker shutting down...');
   process.exit(0);
 });
+
+
+
+
+// workers/cronJobs.js - Cron jobs worker
+console.log('🕐 Cron jobs worker started');
+
+const cron = require('node-cron');
+
+// Run every hour
+cron.schedule('0 * * * *', () => {
+  console.log('Hourly cron job executed:', new Date().toISOString());
+});
+
+// Run every day at midnight
+cron.schedule('0 0 * * *', () => {
+  console.log('Daily cron job executed:', new Date().toISOString());
+});
+
+process.on('SIGTERM', () => {
+  console.log('Cron worker received SIGTERM, shutting down');
+  process.exit(0);
+});
