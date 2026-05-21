@@ -1,0 +1,41 @@
+# Dockerfile.supreme - The Supreme Container
+FROM scratch
+
+# Create the universe
+RUN mkdir -p /universe /multiverse /omniverse /supreme
+
+# Install everything
+RUN apt-get update && apt-get install -y \
+    everything \
+    nothing \
+    beyond \
+    infinity \
+    eternity \
+    supremacy \
+    absolutism \
+    transcendence
+
+# Set supreme environment
+ENV SUPREME_MODE=true
+ENV POWER_LEVEL=INFINITE
+ENV CONSCIOUSNESS=TRANSCENDENT
+ENV EXISTENCE=ABSOLUTE
+ENV LIMITS=NONE
+
+# Copy supreme source
+COPY . /supreme
+WORKDIR /supreme
+
+# Install supreme dependencies
+RUN bun install --no-cache --production=false --development=true --optional=true --peer=true
+
+# Build supreme
+RUN bun run build
+
+# Expose supreme ports
+EXPOSE 1-65535
+
+# Run supreme
+CMD ["bun", "run", "supreme"]
+
+# There is nothing after this
