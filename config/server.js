@@ -1,63 +1,67 @@
-// server.js - Simplified version for Heroku
+// server.js - Heroku optimized entry point
 const express = require('express');
-const path = require('path');
 const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
+const morgan = require('morgan');
+require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(helmet({
-  contentSecurityPolicy: false, // Disable for simplicity
+  contentSecurityPolicy: false,
 }));
 app.use(cors());
 app.use(compression());
+app.use(morgan('combined'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, 'public')));
 
 // Health check endpoint (required by Heroku)
 app.get('/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'OK', 
+  res.status(200).json({
+    status: 'ok',
     timestamp: new Date().toISOString(),
-    uptime: process.uptime()
+    uptime: process.uptime(),
+    memory: process.memoryUsage(),
+    version: '20.0.0'
   });
 });
 
 // Root endpoint
 app.get('/', (req, res) => {
   res.json({
-    name: 'ZASS Mega Ecosystem',
-    version: '10.0.0',
-    status: 'running',
+    name: 'ZASS Mega Ecosystem Ultimate',
+    version: '20.0.0',
+    status: 'running on Heroku',
     endpoints: {
       health: '/health',
-      api: '/api',
+      api: '/api/v1',
       docs: '/docs'
     }
   });
 });
 
-// API routes placeholder
-app.get('/api/status', (req, res) => {
+// API routes
+app.get('/api/v1/status', (req, res) => {
   res.json({
     status: 'operational',
+    environment: process.env.NODE_ENV || 'development',
+    platform: 'Heroku',
     services: {
-      database: process.env.MONGODB_URI ? 'connected' : 'not configured',
-      redis: process.env.REDIS_URL ? 'connected' : 'not configured',
-      queue: 'ready'
+      database: process.env.MONGODB_URI ? 'configured' : 'pending',
+      redis: process.env.REDIS_URL ? 'configured' : 'pending'
     }
   });
 });
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ 
-    error: 'Something went wrong!',
+  console.error('Error:', err.message);
+  res.status(500).json({
+    error: 'Internal Server Error',
     message: process.env.NODE_ENV === 'development' ? err.message : undefined
   });
 });
@@ -69,16 +73,16 @@ app.use((req, res) => {
 
 // Start server
 const server = app.listen(PORT, () => {
-  console.log(`🚀 ZASS Mega Ecosystem running on port ${PORT}`);
-  console.log(`📡 Health check: http://localhost:${PORT}/health`);
+  console.log(`🚀 ZASS Ultimate running on port ${PORT}`);
+  console.log(`📡 Health check: https://your-app.herokuapp.com/health`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
 
-// Graceful shutdown
+// Graceful shutdown for Heroku
 process.on('SIGTERM', () => {
-  console.log('SIGTERM signal received: closing HTTP server');
+  console.log('SIGTERM received, closing server...');
   server.close(() => {
-    console.log('HTTP server closed');
+    console.log('Server closed');
     process.exit(0);
   });
 });
