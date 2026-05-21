@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ZASS Browser - Unlimited Web Browser</title>
+    <title>ZASS Browser - ZASS Only | Unlimited Web Browser</title>
+    <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌐</text></svg>">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
@@ -15,31 +16,46 @@
 
         body {
             font-family: 'Inter', sans-serif;
-            background: #1a1a2e;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             height: 100vh;
             display: flex;
             flex-direction: column;
         }
 
-        /* Browser Header */
+        /* ZASS Browser Header */
         .browser-header {
-            background: #16213e;
-            padding: 10px 20px;
-            border-bottom: 1px solid #0f3460;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 12px 20px;
+            border-bottom: 2px solid #e94560;
         }
 
         .toolbar {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
             flex-wrap: wrap;
         }
 
+        .zass-logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            padding: 6px 15px;
+            border-radius: 25px;
+            color: white;
+            font-weight: bold;
+        }
+
+        .zass-logo i {
+            font-size: 18px;
+        }
+
         .nav-btn {
-            background: #0f3460;
+            background: rgba(255,255,255,0.1);
             border: none;
-            width: 36px;
-            height: 36px;
+            width: 38px;
+            height: 38px;
             border-radius: 50%;
             cursor: pointer;
             color: white;
@@ -55,13 +71,14 @@
             flex: 1;
             display: flex;
             align-items: center;
-            background: #0f3460;
-            border-radius: 24px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 30px;
             padding: 8px 16px;
+            border: 1px solid rgba(255,255,255,0.2);
         }
 
         .url-bar i {
-            color: #888;
+            color: #aaa;
             margin-right: 10px;
         }
 
@@ -69,17 +86,21 @@
             flex: 1;
             background: transparent;
             border: none;
-            padding: 8px 0;
+            padding: 10px 0;
             color: white;
             font-size: 14px;
             outline: none;
         }
 
+        #urlInput::placeholder {
+            color: rgba(255,255,255,0.6);
+        }
+
         .go-btn {
             background: #e94560;
             border: none;
-            width: 36px;
-            height: 36px;
+            width: 38px;
+            height: 38px;
             border-radius: 50%;
             cursor: pointer;
             color: white;
@@ -92,10 +113,10 @@
         }
 
         .action-btn {
-            background: #0f3460;
+            background: rgba(255,255,255,0.1);
             border: none;
-            width: 36px;
-            height: 36px;
+            width: 38px;
+            height: 38px;
             border-radius: 50%;
             cursor: pointer;
             color: white;
@@ -106,10 +127,10 @@
             background: #e94560;
         }
 
-        /* Browser Viewport */
         .viewport {
             flex: 1;
             background: white;
+            position: relative;
         }
 
         #browserFrame {
@@ -118,7 +139,6 @@
             border: none;
         }
 
-        /* Loading Overlay */
         .loading {
             position: fixed;
             top: 50%;
@@ -133,14 +153,34 @@
             text-align: center;
         }
 
-        /* Sidebar for Bookmarks */
+        .loading i {
+            font-size: 30px;
+            margin-bottom: 10px;
+        }
+
+        /* ZASS Status Bar */
+        .zass-status {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 6px 20px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #aaa;
+            border-top: 1px solid #e94560;
+        }
+
+        .zass-status span i {
+            margin-right: 5px;
+        }
+
+        /* Sidebar */
         .sidebar {
             position: fixed;
-            right: -300px;
+            right: -320px;
             top: 0;
-            width: 300px;
+            width: 320px;
             height: 100vh;
-            background: #16213e;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
             z-index: 2000;
             transition: right 0.3s ease;
             padding: 20px;
@@ -157,6 +197,8 @@
             align-items: center;
             margin-bottom: 20px;
             color: white;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e94560;
         }
 
         .close-sidebar {
@@ -168,27 +210,32 @@
         }
 
         .bookmark-item {
-            background: #0f3460;
-            padding: 10px;
+            background: rgba(255,255,255,0.1);
+            padding: 12px;
             margin-bottom: 10px;
-            border-radius: 8px;
+            border-radius: 10px;
             cursor: pointer;
             color: white;
+            transition: all 0.3s;
         }
 
         .bookmark-item:hover {
             background: #e94560;
+            transform: translateX(-5px);
         }
 
         /* Responsive */
         @media (max-width: 768px) {
             .toolbar {
-                gap: 5px;
+                gap: 6px;
             }
-            .nav-btn {
-                width: 32px;
-                height: 32px;
+            .nav-btn, .action-btn {
+                width: 34px;
+                height: 34px;
                 font-size: 12px;
+            }
+            .zass-logo span {
+                display: none;
             }
         }
     </style>
@@ -196,8 +243,13 @@
 <body>
     <div class="browser-header">
         <div class="toolbar">
-            <button class="nav-btn" id="backBtn" title="Back"><i class="fas fa-arrow-left"></i></button>
-            <button class="nav-btn" id="forwardBtn" title="Forward"><i class="fas fa-arrow-right"></i></button>
+            <div class="zass-logo">
+                <i class="fas fa-globe"></i>
+                <span>ZASS ONLY</span>
+            </div>
+            
+            <button class="nav-btn" id="backBtn" title="Go Back"><i class="fas fa-arrow-left"></i></button>
+            <button class="nav-btn" id="forwardBtn" title="Go Forward"><i class="fas fa-arrow-right"></i></button>
             <button class="nav-btn" id="reloadBtn" title="Reload"><i class="fas fa-sync-alt"></i></button>
             <button class="nav-btn" id="homeBtn" title="Home"><i class="fas fa-home"></i></button>
             
@@ -207,22 +259,29 @@
                 <button class="go-btn" id="goBtn"><i class="fas fa-arrow-right"></i></button>
             </div>
             
-            <button class="action-btn" id="bookmarkBtn" title="Bookmark"><i class="fas fa-bookmark"></i></button>
+            <button class="action-btn" id="bookmarkBtn" title="Add Bookmark"><i class="fas fa-bookmark"></i></button>
             <button class="action-btn" id="fullscreenBtn" title="Fullscreen"><i class="fas fa-expand"></i></button>
         </div>
     </div>
     
     <div class="viewport">
-        <iframe id="browserFrame" title="Browser" src="https://www.google.com"></iframe>
+        <iframe id="browserFrame" title="ZASS Browser" src="https://www.google.com"></iframe>
     </div>
     
     <div class="loading" id="loading">
-        <i class="fas fa-spinner fa-spin"></i> Loading...
+        <i class="fas fa-spinner fa-spin"></i><br>
+        Loading ZASS Browser...
+    </div>
+    
+    <div class="zass-status">
+        <span><i class="fas fa-shield-alt"></i> ZASS Secure Mode</span>
+        <span><i class="fas fa-infinity"></i> Unlimited Browsing</span>
+        <span><i class="fas fa-ban"></i> No Censorship</span>
     </div>
     
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <h3><i class="fas fa-bookmark"></i> Bookmarks</h3>
+            <h3><i class="fas fa-bookmark"></i> ZASS Bookmarks</h3>
             <button class="close-sidebar" id="closeSidebarBtn">&times;</button>
         </div>
         <div id="sidebarContent"></div>
@@ -236,7 +295,7 @@
         let currentUrl = 'https://www.google.com';
         let history = [currentUrl];
         let historyIndex = 0;
-        let bookmarks = JSON.parse(localStorage.getItem('browserBookmarks') || '[]');
+        let bookmarks = JSON.parse(localStorage.getItem('zassBookmarks') || '[]');
         
         function showLoading() {
             loading.style.display = 'block';
@@ -250,10 +309,14 @@
             showLoading();
             
             let targetUrl = url.trim();
-            if (!targetUrl) return;
+            if (!targetUrl) {
+                hideLoading();
+                return;
+            }
             
-            // Check if it's a search query
-            if (!targetUrl.includes('.') && !targetUrl.startsWith('http')) {
+            // Check if it's a search query (not a URL)
+            const urlPattern = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
+            if (!urlPattern.test(targetUrl) && !targetUrl.startsWith('http')) {
                 targetUrl = `https://www.google.com/search?q=${encodeURIComponent(targetUrl)}`;
             } else if (!targetUrl.startsWith('http')) {
                 targetUrl = 'https://' + targetUrl;
@@ -263,7 +326,8 @@
                 const response = await fetch(`/api/browser/browse?url=${encodeURIComponent(targetUrl)}`);
                 const data = await response.json();
                 
-                if (data.success) {
+                if (data.success && data.content) {
+                    // Write the content to iframe
                     const doc = browserFrame.contentDocument || browserFrame.contentWindow.document;
                     doc.open();
                     doc.write(data.content);
@@ -271,6 +335,7 @@
                     
                     urlInput.value = data.url;
                     currentUrl = data.url;
+                    document.title = 'ZASS Browser - ZASS Only';
                     
                     // Update history
                     history = history.slice(0, historyIndex + 1);
@@ -287,10 +352,12 @@
                         secureIcon.style.color = '#ff4757';
                     }
                 } else {
+                    // Fallback - load directly
                     browserFrame.src = targetUrl;
                     urlInput.value = targetUrl;
                 }
             } catch (error) {
+                console.error('Navigation error:', error);
                 browserFrame.src = targetUrl;
                 urlInput.value = targetUrl;
             }
@@ -303,7 +370,9 @@
                 historyIndex--;
                 navigateTo(history[historyIndex]);
             } else {
-                browserFrame.contentWindow.history.back();
+                try {
+                    browserFrame.contentWindow.history.back();
+                } catch(e) {}
             }
         }
         
@@ -312,7 +381,9 @@
                 historyIndex++;
                 navigateTo(history[historyIndex]);
             } else {
-                browserFrame.contentWindow.history.forward();
+                try {
+                    browserFrame.contentWindow.history.forward();
+                } catch(e) {}
             }
         }
         
@@ -328,16 +399,19 @@
             const bookmark = {
                 id: Date.now(),
                 url: currentUrl,
-                title: document.title,
+                title: document.title || currentUrl,
                 date: new Date().toISOString()
             };
             
             if (!bookmarks.find(b => b.url === bookmark.url)) {
                 bookmarks.unshift(bookmark);
-                localStorage.setItem('browserBookmarks', JSON.stringify(bookmarks));
-                alert('✅ Bookmark added!');
+                localStorage.setItem('zassBookmarks', JSON.stringify(bookmarks));
+                showZassToast('✅ Bookmark added to ZASS!');
+                if (document.getElementById('sidebar').classList.contains('open')) {
+                    showBookmarks();
+                }
             } else {
-                alert('⚠️ Already bookmarked');
+                showZassToast('⚠️ Already in ZASS bookmarks');
             }
         }
         
@@ -348,17 +422,17 @@
             sidebarContent.innerHTML = '';
             
             if (bookmarks.length === 0) {
-                sidebarContent.innerHTML = '<p style="color: #888; text-align: center;">No bookmarks yet</p>';
+                sidebarContent.innerHTML = '<div style="text-align: center; padding: 40px; color: #888;"><i class="fas fa-bookmark" style="font-size: 48px; margin-bottom: 15px;"></i><p>No ZASS bookmarks yet</p><small>Click the bookmark icon to add</small></div>';
             } else {
                 bookmarks.forEach(bookmark => {
                     const div = document.createElement('div');
                     div.className = 'bookmark-item';
                     div.innerHTML = `
-                        <div><strong>${bookmark.title.substring(0, 40)}</strong></div>
-                        <div style="font-size: 11px; color: #888;">${bookmark.url.substring(0, 50)}</div>
-                        <div style="margin-top: 8px;">
-                            <button onclick="event.stopPropagation(); navigateTo('${bookmark.url}')" style="background: #e94560; border: none; padding: 4px 12px; border-radius: 4px; color: white; cursor: pointer; margin-right: 5px;">Open</button>
-                            <button onclick="event.stopPropagation(); removeBookmark(${bookmark.id})" style="background: transparent; border: 1px solid #ff4757; padding: 4px 12px; border-radius: 4px; color: #ff4757; cursor: pointer;">Delete</button>
+                        <div><strong>${bookmark.title.substring(0, 45)}</strong></div>
+                        <div style="font-size: 10px; color: #aaa; margin-top: 5px;">${bookmark.url.substring(0, 60)}</div>
+                        <div style="margin-top: 10px;">
+                            <button onclick="event.stopPropagation(); navigateTo('${bookmark.url}')" style="background: #e94560; border: none; padding: 5px 12px; border-radius: 5px; color: white; cursor: pointer; margin-right: 8px;">🌐 Open</button>
+                            <button onclick="event.stopPropagation(); removeBookmark(${bookmark.id})" style="background: transparent; border: 1px solid #ff4757; padding: 5px 12px; border-radius: 5px; color: #ff4757; cursor: pointer;">🗑️ Delete</button>
                         </div>
                     `;
                     div.onclick = () => { navigateTo(bookmark.url); closeSidebar(); };
@@ -371,7 +445,8 @@
         
         function removeBookmark(id) {
             bookmarks = bookmarks.filter(b => b.id !== id);
-            localStorage.setItem('browserBookmarks', JSON.stringify(bookmarks));
+            localStorage.setItem('zassBookmarks', JSON.stringify(bookmarks));
+            showZassToast('🗑️ Bookmark removed from ZASS');
             showBookmarks();
         }
         
@@ -379,13 +454,34 @@
             document.getElementById('sidebar').classList.remove('open');
         }
         
+        function showZassToast(message) {
+            const toast = document.createElement('div');
+            toast.innerHTML = `<i class="fas fa-zass"></i> ${message}`;
+            toast.style.position = 'fixed';
+            toast.style.bottom = '80px';
+            toast.style.left = '50%';
+            toast.style.transform = 'translateX(-50%)';
+            toast.style.backgroundColor = '#1a1a2e';
+            toast.style.color = 'white';
+            toast.style.padding = '12px 24px';
+            toast.style.borderRadius = '30px';
+            toast.style.zIndex = '9999';
+            toast.style.fontSize = '14px';
+            toast.style.border = '1px solid #e94560';
+            toast.style.fontWeight = '500';
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2500);
+        }
+        
         function toggleFullscreen() {
             if (!document.fullscreenElement) {
                 document.documentElement.requestFullscreen();
                 document.getElementById('fullscreenBtn').innerHTML = '<i class="fas fa-compress"></i>';
+                showZassToast('🎬 ZASS Fullscreen Mode Activated');
             } else {
                 document.exitFullscreen();
                 document.getElementById('fullscreenBtn').innerHTML = '<i class="fas fa-expand"></i>';
+                showZassToast('📱 Exited Fullscreen Mode');
             }
         }
         
@@ -412,10 +508,22 @@
         
         browserFrame.addEventListener('load', () => {
             hideLoading();
+            // Try to set title
+            try {
+                const frameTitle = browserFrame.contentDocument?.title;
+                if (frameTitle) {
+                    document.title = `ZASS Browser - ${frameTitle.substring(0, 30)}`;
+                }
+            } catch(e) {}
         });
         
-        // Initial navigation
+        // Start with Google but show ZASS branding
         navigateTo('https://www.google.com');
+        
+        // Display ZASS welcome message
+        setTimeout(() => {
+            showZassToast('🔥 Welcome to ZASS Browser - ZASS Only! Unlimited & Uncensored 🔥');
+        }, 1000);
     </script>
 </body>
 </html>
