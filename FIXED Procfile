@@ -1,0 +1,4 @@
+# Procfile - Heroku process types
+web: node index.js
+worker: node src/autoUpdater.js
+cron: node src/monitor.js
