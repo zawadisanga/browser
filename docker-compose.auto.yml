@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: zass-watchtower
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WATCHTOWER_POLL_INTERVAL=300
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_INCLUDE_STOPPED=true
+      - WATCHTOWER_REVIVE_STOPPED=true
+      - WATCHTOWER_SCHEDULE=0 0/6 * * * *
+    command: --interval 300
+  
+  autoheal:
+    image: willfarrell/autoheal:latest
+    container_name: zass-autoheal
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - AUTOHEAL_CONTAINER_LABEL=all
+      - AUTOHEAL_INTERVAL=30
+      - AUTOHEAL_START_PERIOD=30
+  
+  zass-app:
+    build: .
+    container_name: zass-app
+    restart: always
+    ports:
+      - "16232:16232"
+    environment:
+      - AUTO_UPDATE=true
+      - SELF_HEAL=true
+    labels:
+      - "autoheal=true"
+    volumes:
+      - ./src:/app/src
+      - ./config:/app/config
+      - ./logs:/app/logs
+    depends_on:
+      - watchtower
+      - autoheal
